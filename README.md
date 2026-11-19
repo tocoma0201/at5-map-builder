@@ -4,6 +4,10 @@
 
 > **対応環境：Windows 10/11のみ。** IMCのWindows版を起動してAT5を作るため、macOS・Linuxでは動作しません。
 
+## 画面イメージ
+
+画面画像は後日追加します。AT5範囲設定ツールの画面と、Ti2で地図を表示した画面を掲載する予定です。
+
 ## できること
 
 - 地図をドラッグして移動し、必要な範囲を矩形で選択
@@ -18,7 +22,7 @@
 ## 必要なもの
 
 1. Windows 10/11
-2. Python 3.9以降 for Windows（py コマンドが使えること）
+2. Python 3.9以降 for Windows（`py`、`python`、`python3` のいずれかで起動できること）
 3. Insight Map Creator（IMC）Windows x64版
 4. 地図タイル取得時のインターネット接続
 5. microSDカード（魚探へデータを移す場合）
@@ -31,9 +35,17 @@
 
 ### 2. Pythonを用意
 
-[Python 3 for Windows](https://www.python.org/downloads/windows/)をインストールします。インストール後、新しくPowerShellを開いて次を実行し、バージョンが表示されることを確認します。
+Pythonがまだない場合は、`Install_Python.bat` をダブルクリックします。WinGetが使えるPCではPython 3.14をインストールし、WinGetがない場合はPython公式ダウンロードページを開きます。画面の案内に従ってください。
 
+すでにPythonを使っている場合は、再インストール不要です。python.orgのインストーラー、Microsoft Store、WinGetなど、どの方法で入れたPythonでも構いません。起動時に `py -3`、`python`、`python3` の順で利用可能なPythonを自動検出します。**`py` コマンドは必須ではありません。**
+
+PowerShellで、使えるコマンドのいずれかを実行してPython 3.9以降が表示されることを確認します。
+
+    python --version
+    python3 --version
     py -3 --version
+
+Pythonをインストールした直後は、開いているPowerShellやエクスプローラーを閉じて開き直してください。
 
 ### 3. 依存ライブラリーをセットアップ
 
@@ -41,7 +53,7 @@
 
     powershell -ExecutionPolicy Bypass -File .\setup.ps1
 
-このスクリプトは地図画像処理に必要なPillowを設定します。
+このスクリプトはWindows上で利用可能なPythonを自動検出し、地図画像処理に必要なPillowを設定します。既存の環境に応じて `py`、`python`、`python3` を使い分けます。
 
 ### 4. Insight Map Creatorを用意
 

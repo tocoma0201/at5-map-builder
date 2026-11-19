@@ -1,14 +1,52 @@
 $ErrorActionPreference = "Stop"
 Set-Location -LiteralPath $PSScriptRoot
 
-$pythonLauncher = Get-Command py -ErrorAction SilentlyContinue
-if (-not $pythonLauncher) {
-    Write-Host "Python 3 for Windows is required. Install it from https://www.python.org/downloads/windows/ and enable the Python Launcher, then run this script again." -ForegroundColor Yellow
+function Find-PythonExecutable {
+    $launchers = @()
+    if (Get-Command py -ErrorAction SilentlyContinue) {
+        $launchers += [pscustomobject]@{ Command = "py"; Prefix = @("-3") }
+    }
+    if (Get-Command python -ErrorAction SilentlyContinue) {
+        $launchers += [pscustomobject]@{ Command = "python"; Prefix = @() }
+    }
+    if (Get-Command python3 -ErrorAction SilentlyContinue) {
+        $launchers += [pscustomobject]@{ Command = "python3"; Prefix = @() }
+    }
+
+    foreach ($launcher in $launchers) {
+        try {
+            $invokeArgs = @($launcher.Prefix) + @("-c", "import sys; print(sys.executable)")
+            $pythonPath = (& $launcher.Command @invokeArgs 2>$null | Select-Object -Last 1)
+            if ($LASTEXITCODE -ne 0 -or -not $pythonPath) {
+                continue
+            }
+            $pythonPath = $pythonPath.Trim()
+            if (-not (Test-Path -LiteralPath $pythonPath -PathType Leaf)) {
+                continue
+            }
+
+            $versionText = & $pythonPath -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>$null
+            if ($LASTEXITCODE -eq 0 -and [version]$versionText -ge [version]"3.9") {
+                return $pythonPath
+            }
+        } catch {
+            continue
+        }
+    }
+    return $null
+}
+
+$pythonExe = Find-PythonExecutable
+if (-not $pythonExe) {
+    Write-Host "Python 3.9 or later was not found." -ForegroundColor Yellow
+    Write-Host "Run Install_Python.bat, or install Python for Windows using your preferred method."
+    Write-Host "The py launcher is optional; python or python3 on PATH also works."
     exit 1
 }
 
-py -3 --version
-py -3 -m pip install --user -r (Join-Path $PSScriptRoot "requirements.txt")
+Write-Host "Using: $pythonExe"
+& $pythonExe --version
+& $pythonExe -m pip install --user -r (Join-Path $PSScriptRoot "requirements.txt")
 if ($LASTEXITCODE -ne 0) {
     throw "Python dependency setup failed (exit=$LASTEXITCODE)"
 }

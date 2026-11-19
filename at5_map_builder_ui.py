@@ -80,6 +80,7 @@ textarea{height:62px;resize:vertical} button{cursor:pointer;background:#eef4f7}
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+const pythonExecutable = __PYTHON_EXECUTABLE_JSON__;
 const map=L.map('map').setView([35.24,139.36],10);
 L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',{
  maxZoom:18, attribution:'地理院タイル（標準地図） | 国土地理院'
@@ -113,7 +114,11 @@ function updateCommand(){
  const dest=copyTo.value.trim();
   const imc=imcExe.value.trim(), sap=templateSap.value.trim();
  const name=mapName.value.trim();
-  document.getElementById('command').value=`py .\\build_at5_map.py --bbox ${b.join(' ')} --output-dir builds\\map-ui-${outputTag(bbox)} --imc-exe "${imc}" --template-sap "${sap}" --min-resolution 1 --max-resolution 8192 --filter-alpha 0${name?' --at5-prefix '+name:''}${dest?' --copy-to "'+dest+'"':''}`;
+  const parts=[pythonExecutable,'.\\build_at5_map.py','--bbox',...b,'--output-dir',`builds\\map-ui-${outputTag(bbox)}`,'--imc-exe',imc,'--template-sap',sap,'--min-resolution','1','--max-resolution','8192','--filter-alpha','0'];
+  if(name)parts.push('--at5-prefix',name);
+  if(dest)parts.push('--copy-to',dest);
+  const psQuote=value=>"'"+String(value).replaceAll("'","''")+"'";
+  document.getElementById('command').value='& '+parts.map(psQuote).join(' ');
 }
 async function persist(){
  try{await fetch('/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bbox,copyTo:copyTo.value.trim(),at5Prefix:mapName.value.trim(),imcExe:imcExe.value.trim(),templateSap:templateSap.value.trim()})})}catch(e){}
@@ -333,7 +338,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = urlparse(self.path).path
         if path == "/":
-            body = HTML.encode("utf-8")
+            body = HTML.replace("__PYTHON_EXECUTABLE_JSON__", json.dumps(sys.executable)).encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
@@ -378,6 +383,8 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 def main():
+    if sys.version_info < (3, 9):
+        raise SystemExit("Python 3.9 or later is required.")
     if not BUILDER.is_file():
         raise SystemExit(f"Buildスクリプトがありません: {BUILDER}")
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
