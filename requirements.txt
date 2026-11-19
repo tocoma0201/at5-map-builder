@@ -1,0 +1,2 @@
+# Dependencies for map download and PNG assembly
+Pillow>=10.0

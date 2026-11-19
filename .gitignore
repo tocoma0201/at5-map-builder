@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+builds/
+_tile_cache/
+*.log
+*.sap
+*.at5
+*.png
+*.pgw
+*.kml
