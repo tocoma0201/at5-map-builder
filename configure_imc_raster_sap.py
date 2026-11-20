@@ -115,6 +115,24 @@ def set_length_field(message, number, new_value, label):
 
 
 
+def set_varint_field(message, number, new_value, label):
+    """Set a protobuf varint field, adding it when the template omits it."""
+    if new_value < 0:
+        raise ValueError(f"{label}: 値は0以上にしてください")
+    fields = parse_fields(message)
+    matches = [i for i, field in enumerate(fields) if field[0] == number]
+    if len(matches) > 1:
+        raise ValueError(f"{label}: field {number} が複数あります")
+    encoded = encode_varint((number << 3) | 0) + encode_varint(new_value)
+    if matches:
+        index = matches[0]
+        if fields[index][1] != 0:
+            raise ValueError(f"{label}: field {number} のwire typeが不正です")
+        fields[index] = (number, 0, encode_varint(new_value), encoded)
+        return b"".join(field[3] for field in fields)
+    return message + encoded
+
+
 def replace_single_varint_field(message, number, new_value, label):
     if new_value < 0:
         raise ValueError(f"{label}: 値は0以上にしてください")
@@ -174,11 +192,8 @@ def _is_raster_template_bytes(raw):
         one_field(raster_fields, 2, 2, "Raster Work Directory")
         one_field(raster_fields, 3, 5, "Raster Min Resolution")
         one_field(raster_fields, 4, 5, "Raster Max Resolution")
-        one_field(fields, 4, 2, "Keyhole Mode input")
-        options = one_field(fields, 9, 2, "Raster Options")[2]
-        options_fields = parse_fields(options)
-        one_field(options_fields, 2, 2, "Raster Filter Shapefile")
-        one_field(options_fields, 6, 0, "Raster Filter Alpha")
+        # Keyhole Mode input and Raster Options are optional in some IMC
+        # Sample ZIP variants. configure_sap adds or updates Raster Options.
         return True
     except (ValueError, IndexError):
         return False
@@ -342,38 +357,46 @@ def configure_sap(source, output, work_dir, raster_filter,
         body, 3, raster_updated, "Raster Mode"
     )
 
-    # Root field 4 keeps the KML selected in Keyhole Mode. When changing the
-    # raster folder, move that project reference to the matching KML there too.
+    # Some Sample presets do not include a Keyhole Mode input. If present,
+    # keep its KML path aligned with the new raster source folder.
     if source_folder is not None:
         root_fields = parse_fields(body_updated)
-        source_ref = one_field(root_fields, 4, 2, "Keyhole Mode input")
-        source_ref_fields = parse_fields(source_ref[2])
-        source_path = one_field(source_ref_fields, 1, 2, "Keyhole input path")
-        old_path = source_path[2].decode("ascii")
-        source_name = old_path.replace("\\", "/").rsplit("/", 1)[-1]
-        keyhole_path = normalize_imc_path(source_folder / source_name).encode("ascii")
-        source_ref_updated = replace_single_length_field(
-            source_ref[2], 1, keyhole_path, "Keyhole input path"
-        )
-        body_updated = replace_single_length_field(
-            body_updated, 4, source_ref_updated, "Keyhole Mode input"
-        )
+        source_refs = [f for f in root_fields if f[0] == 4 and f[1] == 2]
+        if len(source_refs) > 1:
+            raise ValueError("Keyhole Mode input: root field 4 が複数あります")
+        if source_refs:
+            source_ref = source_refs[0]
+            source_ref_fields = parse_fields(source_ref[2])
+            source_path = one_field(source_ref_fields, 1, 2, "Keyhole input path")
+            old_path = source_path[2].decode("ascii")
+            source_name = old_path.replace("\\", "/").rsplit("/", 1)[-1]
+            keyhole_path = normalize_imc_path(source_folder / source_name).encode("ascii")
+            source_ref_updated = replace_single_length_field(
+                source_ref[2], 1, keyhole_path, "Keyhole input path"
+            )
+            body_updated = replace_single_length_field(
+                body_updated, 4, source_ref_updated, "Keyhole Mode input"
+            )
 
-    # Root field 9 is Raster Options; subfield 2 is Raster Filter Shapefile.
+    # Raster Options fields differ between IMC sample presets. Ensure the
+    # filter path and alpha setting exist even when the template omits them.
     root_fields = parse_fields(body_updated)
-    options = one_field(root_fields, 9, 2, "SAP Raster Options")[2]
+    options_fields = [f for f in root_fields if f[0] == 9 and f[1] == 2]
+    if len(options_fields) > 1:
+        raise ValueError("SAP Raster Options: root field 9 が複数あります")
+    options = options_fields[0][2] if options_fields else b""
     filter_value = (
         normalize_imc_path(raster_filter).encode("ascii")
         if raster_filter is not None else b""
     )
-    options_updated = replace_single_length_field(
+    options_updated = set_length_field(
         options, 2, filter_value, "Raster Filter Shapefile"
     )
     if filter_alpha is not None:
-        options_updated = replace_single_varint_field(
+        options_updated = set_varint_field(
             options_updated, 6, filter_alpha, "Raster Filter Alpha"
         )
-    body_updated = replace_single_length_field(
+    body_updated = set_length_field(
         body_updated, 9, options_updated, "SAP Raster Options"
     )
     if filter_image_boundary is not None:
