@@ -169,7 +169,7 @@ async function poll(){
  if(j.running){setTimeout(poll,1200)}else{running=false;document.getElementById('build').disabled=false;status(j.result||'処理が終了しました。ログを確認してください。')}
  }catch(e){setTimeout(poll,2000)}
 }
-(async()=>{try{const s=await (await fetch('/state')).json();copyTo.value=s.copyTo||copyTo.value;mapName.value=s.at5Prefix||'';imcExePath=s.imcExe||'';imcTemplatePath=s.templateSap||'';imcStatus.textContent=imcExePath?'IMC設定済み':'IMC未設定';setBox(s.bbox||[35.140,139.130,35.330,139.590],false);status('範囲を読み込みました。地図はドラッグで移動できます。');if(!imcExePath)imcDialog.showModal()}catch(e){setBox([35.140,139.130,35.330,139.590],false);imcStatus.textContent='IMC未設定';imcDialog.showModal();status('既定の範囲を表示しています。')}})();
+(async()=>{try{const s=await (await fetch('/state')).json();copyTo.value=s.copyTo||copyTo.value;mapName.value=s.at5Prefix||'';imcExePath=s.imcExe||'';imcTemplatePath=s.templateSap||'';imcStatus.textContent=s.imcValid?'IMC設定済み':'IMC設定を確認してください';setBox(s.bbox||[35.140,139.130,35.330,139.590],false);status('範囲を読み込みました。地図はドラッグで移動できます。');if(!s.imcValid)imcDialog.showModal()}catch(e){setBox([35.140,139.130,35.330,139.590],false);imcStatus.textContent='IMC未設定';imcDialog.showModal();status('既定の範囲を表示しています。')}})();
 </script>
 </body>
 </html>
@@ -185,12 +185,15 @@ class AppState:
     def read_saved(self):
         try:
             data = json.loads(STATE_FILE.read_text(encoding="utf-8"))
-            return {"bbox": data.get("bbox", DEFAULT_BBOX),
-                    "copyTo": data.get("copyTo", DEFAULT_COPY_TO),
-                    "at5Prefix": data.get("at5Prefix", ""),
-                    "imcExe": data.get("imcExe", DEFAULT_IMC_EXE),
-                    "templateSap": data.get("templateSap", ""),
-                    }
+            result = {"bbox": data.get("bbox", DEFAULT_BBOX),
+                      "copyTo": data.get("copyTo", DEFAULT_COPY_TO),
+                      "at5Prefix": data.get("at5Prefix", ""),
+                      "imcExe": data.get("imcExe", DEFAULT_IMC_EXE),
+                      "templateSap": data.get("templateSap", "")}
+            exe = Path(str(result["imcExe"]).strip()) if result["imcExe"] else None
+            template = Path(str(result["templateSap"]).strip()) if result["templateSap"] else None
+            result["imcValid"] = bool(exe and exe.is_file() and template and template.is_file())
+            return result
         except (OSError, ValueError, TypeError):
             return {"bbox": DEFAULT_BBOX, "copyTo": DEFAULT_COPY_TO, "at5Prefix": "", "imcExe": DEFAULT_IMC_EXE, "templateSap": ""}
 
