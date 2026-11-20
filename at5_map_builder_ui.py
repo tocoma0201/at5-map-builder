@@ -69,7 +69,7 @@ dialog{border:1px solid #aab6bf;border-radius:8px;width:min(480px,calc(100vw - 3
 <div class="actions"><button id="imcSettings" type="button">IMC設定</button><span id="imcStatus" class="note">確認中…</span></div>
 <dialog id="imcDialog">
 <h2>IMCの場所を設定</h2>
-<p class="note">エクスプローラーでInsightMapCreator.exeを右クリックして「パスのコピー」を選び、ここに貼り付けてください。コピー時に付く前後のダブルクォート（"）は自動で取り除きます。Raster Mode設定はmapcreator.zip内のSample ZIPから自動取得するため、追加展開は不要です。設定はこのPCに保存され、「IMC設定」からいつでも変更できます。</p>
+<p class="note">エクスプローラーでInsightMapCreator.exeを右クリックして「パスのコピー」を選び、ここに貼り付けてください。Raster Mode設定はmapcreator.zip内のSample ZIPから自動取得するため、追加展開は不要です。設定はこのPCに保存され、「IMC設定」からいつでも変更できます。</p>
 <label for="imcPath">InsightMapCreator.exeのパス</label>
 <input id="imcPath" placeholder="例: C:\Users\名前\Documents\AT5MapBuilder\IMC\InsightMapCreator.exe">
 <p id="imcPathError" class="note warning"></p>
@@ -97,6 +97,13 @@ const box=document.getElementById('bbox'), copyTo=document.getElementById('copyT
 const imcDialog=document.getElementById('imcDialog'), imcPath=document.getElementById('imcPath');
 const imcStatus=document.getElementById('imcStatus'), imcPathError=document.getElementById('imcPathError');
 let imcExePath='', imcTemplatePath='';
+imcPath.addEventListener('paste',e=>{
+ const pasted=e.clipboardData?.getData('text/plain');
+ if(!pasted)return;
+ const trimmed=pasted.trim();
+ const clean=trimmed.length>=2&&trimmed.startsWith('"')&&trimmed.endsWith('"')?trimmed.slice(1,-1):pasted;
+ if(clean!==pasted){e.preventDefault();document.execCommand('insertText',false,clean)}
+});
 
 function valid(a){return a.length===4&&a.every(Number.isFinite)&&a[0]<a[2]&&a[1]<a[3]&&a[0]>=-90&&a[2]<=90&&a[1]>=-180&&a[3]<=180}
 function setBox(a,save=true){
