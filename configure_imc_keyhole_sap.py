@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from configure_imc_raster_sap import (
-    MAGIC, encode_varint, parse_fields, read_varint,
+    MAGIC, encode_varint, encode_length_field, parse_fields, read_varint,
     replace_single_length_field, replace_single_varint_field, one_field,
 )
 
@@ -39,11 +39,26 @@ def configure_keyhole_sap(source, kml, output):
         raise ValueError("Raster/Keyhole ModeのSAPではありません")
 
     body = replace_single_varint_field(body, 1, 2, "Keyhole Processing Mode")
-    keyhole = one_field(parse_fields(body), 4, 2, "Keyhole Mode input")[2]
-    keyhole_fields = parse_fields(keyhole)
     kml_path = str(kml).replace("\\", "/").encode("ascii")
-    keyhole = replace_single_length_field(keyhole, 1, kml_path, "Keyhole KML path")
-    body = replace_single_length_field(body, 4, keyhole, "Keyhole Mode input")
+    root_fields = parse_fields(body)
+    keyhole_matches = [field for field in root_fields if field[0] == 4]
+    if len(keyhole_matches) > 1:
+        raise ValueError("Keyhole Mode input: root field 4 が複数あります")
+    if keyhole_matches:
+        keyhole_field = keyhole_matches[0]
+        if keyhole_field[1] != 2:
+            raise ValueError("Keyhole Mode input: root field 4 の形式が不正です")
+        keyhole = keyhole_field[2]
+        keyhole = replace_single_length_field(
+            keyhole, 1, kml_path, "Keyhole KML path"
+        )
+        body = replace_single_length_field(
+            body, 4, keyhole, "Keyhole Mode input"
+        )
+    else:
+        # Sample SAPによってKeyhole入力欄が省略されている場合は追加する。
+        keyhole = encode_length_field(1, kml_path)
+        body += encode_length_field(4, keyhole)
 
     result = MAGIC + encode_varint(len(body)) + body
     output.parent.mkdir(parents=True, exist_ok=True)
