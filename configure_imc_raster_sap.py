@@ -270,10 +270,19 @@ def find_raster_template(imc_exe):
         except (OSError, zipfile.BadZipFile, RuntimeError):
             continue
 
-    raise FileNotFoundError(
-        "Raster Mode設定が見つかりません。IMC_Application_x64の近くに"
-        "IMC_Sampleフォルダー、または名前にSampleを含むZIPがあるか確認してください。"
-    )
+    if sample_archives:
+        archive_list = ", ".join(str(path) for path in sorted(set(sample_archives)))
+        detail = (
+            "Sample ZIPは見つかりましたが、利用できるRaster Mode設定が"
+            f"見つかりませんでした。確認したZIP: {archive_list}"
+        )
+    else:
+        searched = ", ".join(str(base) for base in bases)
+        detail = (
+            "Sample ZIPもIMC_Sampleフォルダーも見つかりませんでした。"
+            f"確認した場所: {searched}"
+        )
+    raise FileNotFoundError(detail)
 
 
 def configure_sap(source, output, work_dir, raster_filter,
@@ -335,15 +344,15 @@ def configure_sap(source, output, work_dir, raster_filter,
     raster = one_field(root_fields, 3, 2, "SAP")[2]
     raster_fields = parse_fields(raster)
     source_field = one_field(raster_fields, 1, 2, "Raster Mode")
-    if not source_field[2]:
+    if not source_field[2] and source_folder is None:
         raise ValueError("Source Folderが空です")
     work_value = normalize_imc_path(work_dir, directory=True).encode("ascii")
-    raster_updated = replace_single_length_field(
+    raster_updated = set_length_field(
         raster, 2, work_value, "Raster Mode Work Directory"
     )
     if source_folder is not None:
         source_value = normalize_imc_path(source_folder, directory=True).encode("ascii")
-        raster_updated = replace_single_length_field(
+        raster_updated = set_length_field(
             raster_updated, 1, source_value, "Raster Mode Source Folder"
         )
     if min_resolution is not None:
