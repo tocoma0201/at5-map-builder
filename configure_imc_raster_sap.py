@@ -246,35 +246,54 @@ def find_raster_template(imc_exe):
             continue
 
     cache_root = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "AT5MapBuilder" / "imc-template-cache"
+    archive_details = []
     for archive in sorted(set(sample_archives), key=lambda item: item.name.casefold()):
         try:
             with zipfile.ZipFile(archive) as bundle:
+                archive_members = bundle.infolist()
                 members = sorted(
-                    (info for info in bundle.infolist()
+                    (info for info in archive_members
                      if not info.is_dir() and info.filename.casefold().endswith(".sap")),
                     key=lambda info: info.filename.casefold(),
                 )
+                if not members:
+                    nested_zips = [
+                        info.filename for info in archive_members
+                        if not info.is_dir() and info.filename.casefold().endswith(".zip")
+                    ]
+                    archive_details.append(
+                        f"{archive.name}: .sapなし"
+                        + (f"、ZIP内ZIP={', '.join(nested_zips[:5])}" if nested_zips else "")
+                    )
                 for info in members:
                     raw = bundle.read(info)
-                    if not _is_raster_template_bytes(raw):
+                    valid = _is_raster_template_bytes(raw)
+                    archive_details.append(
+                        f"{archive.name}!{info.filename}: "
+                        f"signature={raw[:4]!r}, Raster Mode判定={'OK' if valid else 'NG'}"
+                    )
+                    if not valid:
                         continue
                     digest = hashlib.sha256(
-                        str(archive.resolve()).encode("utf-8") + b"\0"
-                        + info.filename.encode("utf-8") + b"\0" + raw
+                        str(archive.resolve()).encode("utf-8") + b"\\0"
+                        + info.filename.encode("utf-8") + b"\\0" + raw
                     ).hexdigest()[:16]
                     cached = cache_root / f"{archive.stem}-{digest}-{Path(info.filename).name}"
                     if not cached.is_file():
                         cache_root.mkdir(parents=True, exist_ok=True)
                         cached.write_bytes(raw)
                     return cached
-        except (OSError, zipfile.BadZipFile, RuntimeError):
+        except (OSError, zipfile.BadZipFile, RuntimeError) as exc:
+            archive_details.append(f"{archive.name}: 読み取り失敗 ({exc})")
             continue
 
     if sample_archives:
-        archive_list = ", ".join(str(path) for path in sorted(set(sample_archives)))
+        archive_list = "; ".join(archive_details) or ", ".join(
+            str(path) for path in sorted(set(sample_archives))
+        )
         detail = (
             "Sample ZIPは見つかりましたが、利用できるRaster Mode設定が"
-            f"見つかりませんでした。確認したZIP: {archive_list}"
+            f"見つかりませんでした。内容: {archive_list}"
         )
     else:
         searched = ", ".join(str(base) for base in bases)
