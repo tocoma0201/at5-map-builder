@@ -59,8 +59,8 @@ dialog{border:1px solid #aab6bf;border-radius:8px;width:min(480px,calc(100vw - 3
 <p class="note">地図は通常ドラッグで移動できます。「範囲選択」をONにした間だけドラッグで範囲を囲めます。座標は「南 西 北 東」の順で入力します。最後に使った範囲は次回も保持されます。</p>
 <button id="selectMode">範囲選択: OFF（ドラッグで地図移動）</button>
 <label for="bbox">範囲（南, 西, 北, 東）</label>
-<textarea id="bbox" spellcheck="false" placeholder="35.140, 139.130, 35.330, 139.590"></textarea>
-<div class="actions"><button id="apply">入力した範囲を反映</button><button id="useMap">地図の表示範囲を入力へ反映</button></div>
+<textarea id="bbox" spellcheck="false" placeholder="35.140, 139.130, 35.330, 139.590" title="南, 西, 北, 東の順に入力し、Enterで地図上の選択範囲へ反映します。"></textarea>
+<div class="actions"><button id="useMap" title="現在見えている地図の範囲を、作成する地図範囲として設定します。">現在の地図表示範囲を選択範囲にする</button></div>
 <div id="estimate" class="note"></div>
 <label for="mapName">Ti2で選ぶ地図名／AT5先頭文字（任意）</label>
 <input id="mapName" placeholder="例: Map01" maxlength="32">
@@ -144,7 +144,9 @@ function updateCommand(){
 async function persist(){
  try{await fetch('/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bbox,copyTo:copyTo.value.trim(),at5Prefix:mapName.value.trim(),imcExe:imcExePath,templateSap:imcTemplatePath})})}catch(e){}
 }
-document.getElementById('apply').onclick=()=>setBox(parseBox(box.value));
+box.addEventListener('keydown',e=>{
+ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();setBox(parseBox(box.value))}
+});
 document.getElementById('useMap').onclick=()=>{const b=map.getBounds();setBox([b.getSouth(),b.getWest(),b.getNorth(),b.getEast()])};
 copyTo.onchange=()=>{updateCommand();persist()};
 mapName.oninput=()=>{updateCommand();persist()};
