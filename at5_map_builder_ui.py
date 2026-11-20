@@ -108,13 +108,13 @@ imcPath.addEventListener('paste',e=>{
 });
 
 function valid(a){return a.length===4&&a.every(Number.isFinite)&&a[0]<a[2]&&a[1]<a[3]&&a[0]>=-90&&a[2]<=90&&a[1]>=-180&&a[3]<=180}
-function setBox(a,save=true){
+function setBox(a,save=true,fitMap=false){
  if(!valid(a)){status('範囲の数値が不正です。南 西 北 東の順に入力してください。');return}
  bbox=a.map(Number); box.value=bbox.map(x=>x.toFixed(6)).join(', ');
  status('範囲を更新しました。');
  const bounds=[[bbox[0],bbox[1]],[bbox[2],bbox[3]]];
  if(rect)rect.setBounds(bounds);else rect=L.rectangle(bounds,{color:'#d23636',weight:2,fillOpacity:.10}).addTo(map);
- map.fitBounds(bounds,{padding:[12,12]}); updateCommand(); updateEstimate();
+ if(fitMap)map.fitBounds(bounds,{padding:[12,12]}); updateCommand(); updateEstimate();
  if(save) persist();
 }
 function parseBox(s){const parts=s.trim().split(/[\s,，]+/).filter(Boolean);if(parts.length!==4)return [];return parts.map(Number)}
@@ -181,7 +181,7 @@ async function poll(){
  if(j.running){setTimeout(poll,1200)}else{running=false;document.getElementById('runPowerShell').disabled=false;status(j.result||'処理が終了しました。ログを確認してください。')}
  }catch(e){setTimeout(poll,2000)}
 }
-(async()=>{try{const s=await (await fetch('/state')).json();copyTo.value=s.copyTo||copyTo.value;mapName.value=s.at5Prefix||'';imcExePath=s.imcExe||'';imcTemplatePath=s.templateSap||'';imcStatus.textContent=s.imcValid?'IMC設定済み':'IMC設定を確認してください';setBox(s.bbox||[35.140,139.130,35.330,139.590],false);status('範囲を読み込みました。地図はドラッグで移動できます。');if(!s.imcValid)imcDialog.showModal()}catch(e){setBox([35.140,139.130,35.330,139.590],false);imcStatus.textContent='IMC未設定';imcDialog.showModal();status('既定の範囲を表示しています。')}})();
+(async()=>{try{const s=await (await fetch('/state')).json();copyTo.value=s.copyTo||copyTo.value;mapName.value=s.at5Prefix||'';imcExePath=s.imcExe||'';imcTemplatePath=s.templateSap||'';imcStatus.textContent=s.imcValid?'IMC設定済み':'IMC設定を確認してください';setBox(s.bbox||[35.140,139.130,35.330,139.590],false,true);status('範囲を読み込みました。地図はドラッグで移動できます。');if(!s.imcValid)imcDialog.showModal()}catch(e){setBox([35.140,139.130,35.330,139.590],false,true);imcStatus.textContent='IMC未設定';imcDialog.showModal();status('既定の範囲を表示しています。')}})();
 </script>
 </body>
 </html>
