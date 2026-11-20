@@ -23,7 +23,6 @@ STATE_DIR = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "AT5MapBuil
 STATE_FILE = STATE_DIR / "range-ui-state.json"
 DEFAULT_COPY_TO = ""
 DEFAULT_IMC_EXE = os.environ.get("AT5_IMC_EXE", "")
-DEFAULT_TEMPLATE_SAP = os.environ.get("AT5_TEMPLATE_SAP", "")
 
 HTML = r"""<!doctype html>
 <html lang="ja">
@@ -166,22 +165,21 @@ class AppState:
                     "copyTo": data.get("copyTo", DEFAULT_COPY_TO),
                     "at5Prefix": data.get("at5Prefix", ""),
                     "imcExe": data.get("imcExe", DEFAULT_IMC_EXE),
-                    "templateSap": data.get("templateSap", DEFAULT_TEMPLATE_SAP)}
+                    }
         except (OSError, ValueError, TypeError):
-            return {"bbox": DEFAULT_BBOX, "copyTo": DEFAULT_COPY_TO, "at5Prefix": "", "imcExe": DEFAULT_IMC_EXE, "templateSap": DEFAULT_TEMPLATE_SAP}
+            return {"bbox": DEFAULT_BBOX, "copyTo": DEFAULT_COPY_TO, "at5Prefix": "", "imcExe": DEFAULT_IMC_EXE}
 
     def save(self, data):
         bbox = validate_bbox(data.get("bbox"))
         copy_to = str(data.get("copyTo", DEFAULT_COPY_TO)).strip()
         at5_prefix = validate_at5_prefix(data.get("at5Prefix", ""))
         imc_exe = str(data.get("imcExe", DEFAULT_IMC_EXE)).strip()
-        template_sap = str(data.get("templateSap", DEFAULT_TEMPLATE_SAP)).strip()
         STATE_DIR.mkdir(parents=True, exist_ok=True)
         STATE_FILE.write_text(
-            json.dumps({"bbox": bbox, "copyTo": copy_to, "at5Prefix": at5_prefix, "imcExe": imc_exe, "templateSap": template_sap}, ensure_ascii=False, indent=2),
+            json.dumps({"bbox": bbox, "copyTo": copy_to, "at5Prefix": at5_prefix, "imcExe": imc_exe}, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
-        return {"bbox": bbox, "copyTo": copy_to, "at5Prefix": at5_prefix, "imcExe": imc_exe, "templateSap": template_sap}
+        return {"bbox": bbox, "copyTo": copy_to, "at5Prefix": at5_prefix, "imcExe": imc_exe}
 
     def start_build(self, data):
         with self.lock:
@@ -191,18 +189,15 @@ class AppState:
             copy_to = str(data.get("copyTo", "")).strip()
             at5_prefix = validate_at5_prefix(data.get("at5Prefix", ""))
             imc_exe = Path(str(data.get("imcExe", "")).strip())
-            template_sap = Path(str(data.get("templateSap", "")).strip())
             if not copy_to:
                 raise ValueError("出力先パスを指定してください")
             if not Path(copy_to).is_dir():
                 raise ValueError(f"出力先フォルダーがありません: {copy_to}")
             if not imc_exe.is_file():
                 raise FileNotFoundError(f"InsightMapCreator.exeがありません: {imc_exe}")
-            if not template_sap.is_file():
-                raise FileNotFoundError(f"IMCの設定ファイルがありません: {template_sap}")
             if not BUILDER.is_file():
                 raise FileNotFoundError(f"Buildスクリプトがありません: {BUILDER}")
-            self.save({"bbox": bbox, "copyTo": copy_to, "at5Prefix": at5_prefix, "imcExe": str(imc_exe), "templateSap": str(template_sap)})
+            self.save({"bbox": bbox, "copyTo": copy_to, "at5Prefix": at5_prefix, "imcExe": str(imc_exe)})
             self.running = True
             self.log = ""
             self.result = "Buildを実行中です"
@@ -211,7 +206,7 @@ class AppState:
             command = [
                 sys.executable, str(BUILDER),
                 "--bbox", *[str(v) for v in bbox],
-                "--imc-exe", str(imc_exe), "--template-sap", str(template_sap),
+                "--imc-exe", str(imc_exe),
                 "--output-dir", output_dir_for_bbox(bbox),
                 "--min-resolution", "1",
                 "--max-resolution", "8192",
@@ -255,22 +250,19 @@ class AppState:
         copy_to = str(data.get("copyTo", "")).strip()
         at5_prefix = validate_at5_prefix(data.get("at5Prefix", ""))
         imc_exe = Path(str(data.get("imcExe", "")).strip())
-        template_sap = Path(str(data.get("templateSap", "")).strip())
         if not copy_to:
             raise ValueError("出力先パスを指定してください")
         if not Path(copy_to).is_dir():
             raise ValueError(f"出力先フォルダーがありません: {copy_to}")
         if not imc_exe.is_file():
             raise FileNotFoundError(f"InsightMapCreator.exeがありません: {imc_exe}")
-        if not template_sap.is_file():
-            raise FileNotFoundError(f"IMCの設定ファイルがありません: {template_sap}")
         if not BUILDER.is_file():
             raise FileNotFoundError(f"Buildスクリプトがありません: {BUILDER}")
-        self.save({"bbox": bbox, "copyTo": copy_to, "at5Prefix": at5_prefix, "imcExe": str(imc_exe), "templateSap": str(template_sap)})
+        self.save({"bbox": bbox, "copyTo": copy_to, "at5Prefix": at5_prefix, "imcExe": str(imc_exe)})
         args = [
             sys.executable, str(BUILDER),
             "--bbox", *[str(v) for v in bbox],
-            "--imc-exe", str(imc_exe), "--template-sap", str(template_sap),
+            "--imc-exe", str(imc_exe),
             "--output-dir", output_dir_for_bbox(bbox),
             "--min-resolution", "1", "--max-resolution", "8192",
             "--filter-alpha", "0", "--copy-to", copy_to,
