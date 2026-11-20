@@ -16,6 +16,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
+from configure_imc_raster_sap import find_raster_template
+
 ROOT = Path(__file__).resolve().parent
 BUILDER = ROOT / "build_at5_map.py"
 DEFAULT_BBOX = [35.140, 139.130, 35.330, 139.590]
@@ -187,21 +189,38 @@ class AppState:
                     "copyTo": data.get("copyTo", DEFAULT_COPY_TO),
                     "at5Prefix": data.get("at5Prefix", ""),
                     "imcExe": data.get("imcExe", DEFAULT_IMC_EXE),
+                    "templateSap": data.get("templateSap", ""),
                     }
         except (OSError, ValueError, TypeError):
-            return {"bbox": DEFAULT_BBOX, "copyTo": DEFAULT_COPY_TO, "at5Prefix": "", "imcExe": DEFAULT_IMC_EXE}
+            return {"bbox": DEFAULT_BBOX, "copyTo": DEFAULT_COPY_TO, "at5Prefix": "", "imcExe": DEFAULT_IMC_EXE, "templateSap": ""}
 
     def save(self, data):
         bbox = validate_bbox(data.get("bbox"))
         copy_to = str(data.get("copyTo", DEFAULT_COPY_TO)).strip()
         at5_prefix = validate_at5_prefix(data.get("at5Prefix", ""))
-        imc_exe = str(data.get("imcExe", DEFAULT_IMC_EXE)).strip()
+        previous = self.read_saved()
+        imc_exe = str(data.get("imcExe", previous.get("imcExe", DEFAULT_IMC_EXE))).strip()
+        template_sap = str(data.get("templateSap", previous.get("templateSap", ""))).strip()
         STATE_DIR.mkdir(parents=True, exist_ok=True)
-        STATE_FILE.write_text(
-            json.dumps({"bbox": bbox, "copyTo": copy_to, "at5Prefix": at5_prefix, "imcExe": imc_exe}, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-        return {"bbox": bbox, "copyTo": copy_to, "at5Prefix": at5_prefix, "imcExe": imc_exe}
+        saved = {"bbox": bbox, "copyTo": copy_to, "at5Prefix": at5_prefix,
+                 "imcExe": imc_exe, "templateSap": template_sap}
+        STATE_FILE.write_text(json.dumps(saved, ensure_ascii=False, indent=2), encoding="utf-8")
+        return saved
+
+    def set_imc(self, data):
+        raw_path = str(data.get("imcExe", "")).strip().strip('"')
+        if not raw_path:
+            raise ValueError("InsightMapCreator.exeのパスを入力してください")
+        imc_exe = Path(raw_path).expanduser().resolve()
+        if not imc_exe.is_file():
+            raise FileNotFoundError(f"InsightMapCreator.exeがありません: {imc_exe}")
+        template_sap = find_raster_template(imc_exe)
+        saved = self.read_saved()
+        saved["imcExe"] = str(imc_exe)
+        saved["templateSap"] = str(template_sap)
+        result = self.save(saved)
+        result["imcConfigured"] = True
+        return result
 
     def start_build(self, data):
         with self.lock:
@@ -210,16 +229,21 @@ class AppState:
             bbox = validate_bbox(data.get("bbox"))
             copy_to = str(data.get("copyTo", "")).strip()
             at5_prefix = validate_at5_prefix(data.get("at5Prefix", ""))
-            imc_exe = Path(str(data.get("imcExe", "")).strip())
+            saved = self.read_saved()
+            imc_exe = Path(str(data.get("imcExe") or saved.get("imcExe", "")).strip()).expanduser()
+            template_sap = Path(str(saved.get("templateSap", "")).strip()) if saved.get("templateSap") else None
             if not copy_to:
                 raise ValueError("出力先パスを指定してください")
             if not Path(copy_to).is_dir():
                 raise ValueError(f"出力先フォルダーがありません: {copy_to}")
             if not imc_exe.is_file():
                 raise FileNotFoundError(f"InsightMapCreator.exeがありません: {imc_exe}")
+            if template_sap is None or not template_sap.is_file():
+                template_sap = find_raster_template(imc_exe)
             if not BUILDER.is_file():
                 raise FileNotFoundError(f"Buildスクリプトがありません: {BUILDER}")
-            self.save({"bbox": bbox, "copyTo": copy_to, "at5Prefix": at5_prefix, "imcExe": str(imc_exe)})
+            self.save({"bbox": bbox, "copyTo": copy_to, "at5Prefix": at5_prefix,
+                       "imcExe": str(imc_exe), "templateSap": str(template_sap)})
             self.running = True
             self.log = ""
             self.result = "Buildを実行中です"
@@ -229,6 +253,7 @@ class AppState:
                 sys.executable, str(BUILDER),
                 "--bbox", *[str(v) for v in bbox],
                 "--imc-exe", str(imc_exe),
+                "--template-sap", str(template_sap),
                 "--output-dir", output_dir_for_bbox(bbox),
                 "--min-resolution", "1",
                 "--max-resolution", "8192",
@@ -271,20 +296,26 @@ class AppState:
         bbox = validate_bbox(data.get("bbox"))
         copy_to = str(data.get("copyTo", "")).strip()
         at5_prefix = validate_at5_prefix(data.get("at5Prefix", ""))
-        imc_exe = Path(str(data.get("imcExe", "")).strip())
+        saved = self.read_saved()
+        imc_exe = Path(str(data.get("imcExe") or saved.get("imcExe", "")).strip()).expanduser()
+        template_sap = Path(str(saved.get("templateSap", "").strip())) if saved.get("templateSap") else None
         if not copy_to:
             raise ValueError("出力先パスを指定してください")
         if not Path(copy_to).is_dir():
             raise ValueError(f"出力先フォルダーがありません: {copy_to}")
         if not imc_exe.is_file():
             raise FileNotFoundError(f"InsightMapCreator.exeがありません: {imc_exe}")
+        if template_sap is None or not template_sap.is_file():
+            template_sap = find_raster_template(imc_exe)
         if not BUILDER.is_file():
             raise FileNotFoundError(f"Buildスクリプトがありません: {BUILDER}")
-        self.save({"bbox": bbox, "copyTo": copy_to, "at5Prefix": at5_prefix, "imcExe": str(imc_exe)})
+        self.save({"bbox": bbox, "copyTo": copy_to, "at5Prefix": at5_prefix,
+                   "imcExe": str(imc_exe), "templateSap": str(template_sap)})
         args = [
             sys.executable, str(BUILDER),
             "--bbox", *[str(v) for v in bbox],
             "--imc-exe", str(imc_exe),
+            "--template-sap", str(template_sap),
             "--output-dir", output_dir_for_bbox(bbox),
             "--min-resolution", "1", "--max-resolution", "8192",
             "--filter-alpha", "0", "--copy-to", copy_to,
@@ -359,7 +390,9 @@ class Handler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0"))
             data = json.loads(self.rfile.read(length).decode("utf-8"))
-            if path == "/state":
+            if path == "/imc-settings":
+                self.send_json(200, state.set_imc(data))
+            elif path == "/state":
                 self.send_json(200, state.save(data))
             elif path == "/build":
                 state.start_build(data)
