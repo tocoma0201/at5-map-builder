@@ -256,8 +256,8 @@ def find_raster_template(imc_exe):
             continue
 
     raise FileNotFoundError(
-        "Raster Mode設定が見つかりません。mapcreator.zipを展開したフォルダーに"
-        "IMC_0_7_4_0_Sample.zipが残っているか確認してください。Sample ZIPの追加展開は不要です。"
+        "Raster Mode設定が見つかりません。IMC_Application_x64の近くに"
+        "IMC_Sampleフォルダー、または名前にSampleを含むZIPがあるか確認してください。"
     )
 
 
