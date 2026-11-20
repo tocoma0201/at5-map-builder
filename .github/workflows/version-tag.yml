@@ -35,8 +35,7 @@ jobs:
           fi
 
           tag="v$version"
-          if existing_ref="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" 2>/dev/null)"; then
-            existing_sha="$(printf '%s' "$existing_ref" | gh api --input - --jq '.object.sha')"
+          if existing_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" --jq '.object.sha' 2>/dev/null)"; then
             if [[ "$existing_sha" == "$GITHUB_SHA" ]]; then
               echo "タグ $tag はこのコミットに既に設定されています。"
               exit 0
