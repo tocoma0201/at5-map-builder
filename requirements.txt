@@ -1,3 +1,3 @@
-# Dependencies for map download and PNG assembly
+#地図のダウンロードとPNG画像の作成に必要なライブラリー
 Pillow>=10.0
 zipfile64>=0.1; python_version >= "3.10"
