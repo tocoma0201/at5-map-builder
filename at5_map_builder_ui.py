@@ -71,7 +71,7 @@ dialog{border:1px solid #aab6bf;border-radius:8px;width:min(480px,calc(100vw - 3
 <h2>IMCの場所を設定</h2>
 <p class="note">エクスプローラーでInsightMapCreator.exeを右クリックして「パスのコピー」を選び、ここに貼り付けてください。設定はこのPCに保存され、「IMC設定」からいつでも変更できます。</p>
 <label for="imcPath">InsightMapCreator.exeのパス</label>
-<input id="imcPath" placeholder="例: C:\\Users\\名前\\Documents\\AT5MapBuilder\\IMC\\InsightMapCreator.exe">
+<input id="imcPath" placeholder="例: C:\Users\名前\Documents\AT5MapBuilder\IMC\InsightMapCreator.exe">
 <p id="imcPathError" class="note warning"></p>
 <div class="actions"><button id="cancelImc" type="button">キャンセル</button><button id="saveImc" type="button" class="primary">保存</button></div>
 </dialog>
