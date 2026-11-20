@@ -89,10 +89,6 @@ Ti2ではChart source一覧から、作成時に指定した地図名を選び�
 - 参照先：[国土地理院・測量成果の利用手続](https://www.gsi.go.jp/LAW/2930-index.html)、[地理院タイル利用上の注意](https://maps.gsi.go.jp/help/use.html)、[地図の利用手続ナビ](https://service.gsi.go.jp/onestop/navi/)
 - 生成した地図は正式な航海用海図ではなく、航行の安全や水深・障害物の正確性を保証しません。航行には正式な海図、機器の説明書、現地情報を利用してください。
 
-## 開発・リリース
-
-バージョン更新、Gitタグの自動作成、`main` と `develop` の運用は [リリース手順](./RELEASE_PROCESS.md) を参照してください。
-
 ## ライセンス
 
 本ソフトウェアは [MIT License](./LICENSE) で提供します。地図データ・IMCの権利や利用条件は各提供元に帰属します。
