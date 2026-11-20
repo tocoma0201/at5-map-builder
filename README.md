@@ -57,7 +57,7 @@ Pythonをインストールした直後は、開いているPowerShellやエク�
 
 ### 4. Insight Map Creatorを用意
 
-IMCはこのリポジトリに同梱していません。配布元から取得し、READMEの案内に沿って展開してください。IMC本体ZIPを展開し、Sample ZIPはそのまま同じフォルダーに残せばツールがRaster Mode設定を読み取ります。詳しくは [IMC_INSTALL.md](./IMC_INSTALL.md) を参照してください。
+IMCはこのリポジトリに同梱していません。配布元から取得し、READMEの案内に沿って展開してください。IMC本体ZIPを展開し、Sample ZIPまたは展開済みのIMC_Sampleフォルダーを残せばツールがRaster Mode設定を読み取ります。Sample ZIPをすでに展開済みなら、検出できる場所にIMC_Sampleフォルダーがある限りZIPを削除しても構いません。詳しくは [IMC_INSTALL.md](./IMC_INSTALL.md) を参照してください。
 
 ## 起動と地図作成
 
