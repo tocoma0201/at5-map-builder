@@ -353,8 +353,8 @@ def _is_raster_template_bytes(raw):
         one_field(raster_fields, 2, 2, "Raster Work Directory")
         one_field(raster_fields, 3, 5, "Raster Min Resolution")
         one_field(raster_fields, 4, 5, "Raster Max Resolution")
-        # Keyhole Mode input and Raster Options are optional in some IMC
-        # Sample ZIP variants. configure_sap adds or updates Raster Options.
+        # IMCのSample ZIPによってはKeyhole Mode入力欄やRaster Optionsがありません。
+        # Raster Optionsはconfigure_sap内で追加または更新します。
         return True
     except (ValueError, IndexError):
         return False
