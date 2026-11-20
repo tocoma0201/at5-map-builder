@@ -152,6 +152,68 @@ def normalize_imc_path(path, directory=False):
     return value
 
 
+def is_raster_template(path):
+    """判別可能なIMC Raster Mode設定か確認する。"""
+    try:
+        raw = Path(path).read_bytes()
+        if not raw.startswith(MAGIC):
+            return False
+        declared_length, body_start = read_varint(raw, len(MAGIC))
+        body = raw[body_start:]
+        if declared_length != len(body):
+            return False
+        fields = parse_fields(body)
+        mode = one_field(fields, 1, 0, "SAP Processing Mode")
+        mode_value, end = read_varint(mode[2], 0)
+        if end != len(mode[2]) or mode_value != 1:
+            return False
+        raster = one_field(fields, 3, 2, "Raster Mode")[2]
+        raster_fields = parse_fields(raster)
+        one_field(raster_fields, 1, 2, "Raster Source Folder")
+        one_field(raster_fields, 2, 2, "Raster Work Directory")
+        one_field(raster_fields, 3, 5, "Raster Min Resolution")
+        one_field(raster_fields, 4, 5, "Raster Max Resolution")
+        one_field(fields, 4, 2, "Keyhole Mode input")
+        options = one_field(fields, 9, 2, "Raster Options")[2]
+        options_fields = parse_fields(options)
+        one_field(options_fields, 2, 2, "Raster Filter Shapefile")
+        one_field(options_fields, 6, 0, "Raster Filter Alpha")
+        return True
+    except (OSError, ValueError, IndexError):
+        return False
+
+
+def find_raster_template(imc_exe):
+    """IMC配布物のサンプル設定からRaster Mode用を自動検出する。"""
+    exe_dir = Path(imc_exe).resolve().parent
+    roots = []
+    for base in (exe_dir, *list(exe_dir.parents)[:2]):
+        roots.extend((
+            base / "IMC_Sample" / "Raster",
+            base / "IMC_Sample",
+        ))
+    seen = set()
+    candidates = []
+    for root in roots:
+        if not root.is_dir():
+            continue
+        try:
+            for path in root.rglob("*.sap"):
+                resolved = path.resolve()
+                if resolved not in seen:
+                    seen.add(resolved)
+                    candidates.append(resolved)
+        except OSError:
+            continue
+    for path in sorted(candidates, key=lambda item: (item.name.lower(), str(item).lower())):
+        if is_raster_template(path):
+            return path
+    raise FileNotFoundError(
+        "IMCフォルダー内に利用可能なRaster Mode設定が見つかりません。"
+        "IMC配布物のIMC_Sampleフォルダーも一緒に展開してください。"
+    )
+
+
 def configure_sap(source, output, work_dir, raster_filter,
                   source_folder=None, min_resolution=None, max_resolution=None,
                   filter_alpha=None, filter_image_boundary=None,
