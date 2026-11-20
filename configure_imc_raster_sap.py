@@ -238,9 +238,11 @@ def upgrade_legacy_raster_sap(raw):
         raise ValueError("旧形式SAP: 宣言されたデータ長と実際の長さが一致しません")
     fields = parse_fields(body)
     mode = _legacy_varint(fields, 1)
-    if mode != 1:
-        raise ValueError("旧形式SAPはRaster Modeではありません")
-
+    if mode not in (0, 1, 2, 3):
+        raise ValueError(f"旧形式SAPのProcessing Modeが不正です: {mode}")
+    # GPBfのSample SAPはProcessing ModeがRaster以外でも、Raster設定欄
+    # (Min/Max、Work Directory、Raster Filter)を保持することがある。
+    # 以下で必須Raster欄を検証し、生成側のModeはRaster(1)に固定する。
     source_list_raw = _legacy_value(fields, 3, 2, required=False)
     sources = _legacy_strings(source_list_raw) if source_list_raw is not None else []
     source = sources[0] if sources else ""
