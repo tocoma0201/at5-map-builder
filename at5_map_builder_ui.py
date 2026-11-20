@@ -72,7 +72,6 @@ textarea{height:62px;resize:vertical} button{cursor:pointer;background:#eef4f7}
 
 <p class="note">生成条件：Min 1〜Max 8192 / Filter Alpha 0。容量の1,000 MBは推奨目安で、超えても警告のみで作成を続けます。タイル数が目安1,000枚を超えた場合も警告のみです。名前を入力すると、AT5ファイル名の先頭に付けると同時にAtlas Descriptionを「M=名前」に設定します。Ti2で地図を選ぶ際の識別名として使います。別の地図セットとは異なる名前にしてください。AT5容量は過去の試験結果を面積比で換算した概算です。</p>
 <div class="actions"><button id="save">範囲を保存</button><button id="build" class="primary">AT5を作成して出力先へ保存</button></div>
-<label>PowerShellコマンド</label><textarea id="command" readonly></textarea>
 <button id="runPowerShell">PowerShellで実行</button>
 <div id="status">起動しています…</div>
 <p class="note">本ツールはWindows専用です。実行状況と詳細はPowerShellで確認できます。</p>
@@ -110,18 +109,7 @@ function updateEstimate(){
  const el=document.getElementById('estimate');el.className='note '+(mb<=1000?'good':'warning');
  el.textContent=`範囲面積 約${Math.round(areaKm2(bbox))} km² / AT5概算 約${mib} MiB（${mb} MB）。目安は1,000 MB以内。地図の内容や分割で実サイズは変わります。`;
 }
-function updateCommand(){
- if(!bbox)return;
- const b=bbox.map(x=>x.toFixed(6));
- const dest=copyTo.value.trim();
-  const imc=imcExe.value.trim(), sap=templateSapPath.trim();
- const name=mapName.value.trim();
-  const parts=[pythonExecutable,'.\\build_at5_map.py','--bbox',...b,'--output-dir',`builds\\map-ui-${outputTag(bbox)}`,'--imc-exe',imc,'--template-sap',sap,'--min-resolution','1','--max-resolution','8192','--filter-alpha','0'];
-  if(name)parts.push('--at5-prefix',name);
-  if(dest)parts.push('--copy-to',dest);
-  const psQuote=value=>"'"+String(value).replaceAll("'","''")+"'";
-  document.getElementById('command').value='& '+parts.map(psQuote).join(' ');
-}
+function updateCommand(){}
 async function persist(){
  try{await fetch('/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bbox,copyTo:copyTo.value.trim(),at5Prefix:mapName.value.trim(),imcExe:imcExe.value.trim(),templateSap:templateSapPath.trim()})})}catch(e){}
 }
