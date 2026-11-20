@@ -6,12 +6,14 @@ on:
       - main
     paths:
       - VERSION
+  workflow_dispatch:
 
 permissions: {}
 
 jobs:
   create-version-tag:
     name: バージョンを検証してタグを作成
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
