@@ -18,16 +18,10 @@
 
 IMCはフォルダーから起動する形式として使えます。Windowsへの別途インストーラー実行は、配布パッケージに含まれる説明に従ってください。
 
-## Raster Mode SAPテンプレート
+## 設定ファイルの自動利用
 
-ツールには、利用者のIMC設定やファイルパスを含むSAPファイルを同梱していません。IMCでRaster Modeの設定ファイル（.sap）を作成・保存し、その場所をツールの「Raster Mode SAPテンプレート」欄へ指定してください。
+IMCはコマンドラインから地図変換を実行しますが、実行時にはIMCの設定ファイルも読み込みます。本ツールはIMCの場所から配布物に含まれる「IMC_Sample」フォルダーを探し、Raster Mode用の設定を自動で選びます。利用者が設定ファイルを探して登録する必要はありません。
 
-テンプレートはRaster Modeで保存したSAPを指定します。処理のたびにツールが入力フォルダー、作業フォルダー、解像度、Raster Filter Alpha、Atlas Descriptionを更新します。テンプレートそのものは変更せず、Buildごとに新しいSAPを作成します。
-
-## 導入確認
-
-- InsightMapCreator.exe が起動する
-- IMCでRaster Modeを選び、設定をSAPファイルとして保存できる
-- ツール画面でIMC実行ファイルとSAPテンプレートの両方を指定できる
+IMCを展開する際は、InsightMapCreator.exeだけでなく、配布ZIPに含まれる「IMC_Sample」フォルダーも残してください。ツール画面ではInsightMapCreator.exeの場所を指定します。
 
 IMCのバージョンや設定画面が異なる場合は、同梱されるIMCドキュメントも確認してください。
