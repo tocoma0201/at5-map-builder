@@ -8,7 +8,11 @@
 
 ![AT5地図範囲設定ツール](docs/images/at5-map-builder-range-ui.jpg)
 
-地図範囲の指定、概算容量、出力先の設定を行う画面です。Ti2での表示画面は、実機での確認後に追加します。
+地図範囲の指定、概算容量、出力先の設定を行う画面です。
+
+![Ti2でKanagawaNanbuを表示](docs/images/ti2-chart-source-kanagawa-nanbu.jpg)
+
+Ti2のChart source一覧から「KanagawaNanbu」を選んで表示した例です。
 
 ## できること
 
