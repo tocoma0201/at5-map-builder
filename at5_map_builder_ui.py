@@ -66,8 +66,9 @@ textarea{height:62px;resize:vertical} button{cursor:pointer;background:#eef4f7}
 <input id="copyTo" placeholder="例: F:\ShadedRelief" title="SDカードに保存する場合は、カード直下の ShadedRelief フォルダーを指定してください。例：F:\ShadedRelief。PCに保存する場合は任意のフォルダーを指定できます。">
 <label for="imcExe">Insight Map Creator の実行ファイル</label>
 <input id="imcExe" placeholder="InsightMapCreator.exe のフルパス">
-<label for="templateSap">Raster Mode SAPテンプレート</label>
-<input id="templateSap" placeholder="IMCで保存したRaster Mode用 .sap のフルパス">
+<label>IMCの初回設定</label>
+<button id="chooseTemplate" type="button">IMCの設定ファイルを選択</button>
+<p id="templateStatus" class="note">初回のみ、IMCでRaster Modeとして保存した設定を選択してください。登録後は自動で使います。</p>
 
 <p class="note">生成条件：Min 1〜Max 8192 / Filter Alpha 0。容量の1,000 MBは推奨目安で、超えても警告のみで作成を続けます。タイル数が目安1,000枚を超えた場合も警告のみです。名前を入力すると、AT5ファイル名の先頭に付けると同時にAtlas Descriptionを「M=名前」に設定します。Ti2で地図を選ぶ際の識別名として使います。別の地図セットとは異なる名前にしてください。AT5容量は過去の試験結果を面積比で換算した概算です。</p>
 <div class="actions"><button id="save">範囲を保存</button><button id="build" class="primary">AT5を作成して出力先へ保存</button></div>
@@ -87,7 +88,8 @@ L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',{
 }).addTo(map);
 let rect=null, dragStart=null, bbox=null, running=false, selectMode=false;
 const box=document.getElementById('bbox'), copyTo=document.getElementById('copyTo'), mapName=document.getElementById('mapName');
-const imcExe=document.getElementById('imcExe'), templateSap=document.getElementById('templateSap');
+const imcExe=document.getElementById('imcExe');
+let templateSapPath='';
 function valid(a){return a.length===4&&a.every(Number.isFinite)&&a[0]<a[2]&&a[1]<a[3]&&a[0]>=-90&&a[2]<=90&&a[1]>=-180&&a[3]<=180}
 function setBox(a,save=true){
  if(!valid(a)){status('範囲の数値が不正です。南 西 北 東の順に入力してください。');return}
@@ -112,7 +114,7 @@ function updateCommand(){
  if(!bbox)return;
  const b=bbox.map(x=>x.toFixed(6));
  const dest=copyTo.value.trim();
-  const imc=imcExe.value.trim(), sap=templateSap.value.trim();
+  const imc=imcExe.value.trim(), sap=templateSapPath.trim();
  const name=mapName.value.trim();
   const parts=[pythonExecutable,'.\\build_at5_map.py','--bbox',...b,'--output-dir',`builds\\map-ui-${outputTag(bbox)}`,'--imc-exe',imc,'--template-sap',sap,'--min-resolution','1','--max-resolution','8192','--filter-alpha','0'];
   if(name)parts.push('--at5-prefix',name);
@@ -121,7 +123,7 @@ function updateCommand(){
   document.getElementById('command').value='& '+parts.map(psQuote).join(' ');
 }
 async function persist(){
- try{await fetch('/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bbox,copyTo:copyTo.value.trim(),at5Prefix:mapName.value.trim(),imcExe:imcExe.value.trim(),templateSap:templateSap.value.trim()})})}catch(e){}
+ try{await fetch('/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bbox,copyTo:copyTo.value.trim(),at5Prefix:mapName.value.trim(),imcExe:imcExe.value.trim(),templateSap:templateSapPath.trim()})})}catch(e){}
 }
 document.getElementById('apply').onclick=()=>setBox(parseBox(box.value));
 document.getElementById('useMap').onclick=()=>{const b=map.getBounds();setBox([b.getSouth(),b.getWest(),b.getNorth(),b.getEast()])};
@@ -129,17 +131,25 @@ document.getElementById('save').onclick=async()=>{await persist();status('範囲
 copyTo.onchange=()=>{updateCommand();persist()};
 mapName.oninput=()=>{updateCommand();persist()};
 imcExe.onchange=()=>{updateCommand();persist()};
-templateSap.onchange=()=>{updateCommand();persist()};
+function updateTemplateStatus(){document.getElementById('templateStatus').textContent=templateSapPath?'IMCの設定を登録済みです。以後は自動で使います。':'初回のみ、IMCでRaster Modeとして保存した設定を選択してください。登録後は自動で使います。'}
+document.getElementById('chooseTemplate').onclick=async()=>{
+ try{
+  const r=await fetch('/select-template',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+  const j=await r.json();if(!r.ok)throw Error(j.error||'設定を選択できません');
+  if(!j.path){status('選択をキャンセルしました。');return}
+  templateSapPath=j.path;await persist();updateTemplateStatus();updateCommand();status('IMCの初回設定を保存しました。次回から自動で使います。');
+ }catch(e){status(String(e))}
+};
 document.getElementById('selectMode').onclick=e=>{selectMode=!selectMode;e.currentTarget.textContent=selectMode?'範囲選択: ON（ドラッグで範囲指定）':'範囲選択: OFF（ドラッグで地図移動）';e.currentTarget.classList.toggle('primary',selectMode);map.dragging[selectMode?'disable':'enable']()};
 map.on('mousedown',e=>{if(!selectMode||e.originalEvent.button!==0)return;dragStart=e.latlng;if(rect)map.removeLayer(rect);rect=L.rectangle([dragStart,dragStart],{color:'#d23636',weight:2,fillOpacity:.10}).addTo(map)});
 map.on('mousemove',e=>{if(dragStart&&rect)rect.setBounds(L.latLngBounds(dragStart,e.latlng))});
 document.addEventListener('mouseup',e=>{if(!dragStart)return;const end=map.mouseEventToLatLng(e);const bounds=L.latLngBounds(dragStart,end),sw=bounds.getSouthWest(),ne=bounds.getNorthEast();dragStart=null;if(sw.lat===ne.lat||sw.lng===ne.lng)return;setBox([sw.lat,sw.lng,ne.lat,ne.lng])});
 document.getElementById('build').onclick=async()=>{
  if(running)return;
- const a=parseBox(box.value),dest=copyTo.value.trim(),name=mapName.value.trim(),imc=imcExe.value.trim(),sap=templateSap.value.trim();
+ const a=parseBox(box.value),dest=copyTo.value.trim(),name=mapName.value.trim(),imc=imcExe.value.trim(),sap=templateSapPath.trim();
  if(!valid(a)){status('先に正しいbboxを指定してください。');return}
  if(!dest){status('出力先パスを入力してください。');return}
- if(!imc||!sap){status('IMC実行ファイルとRaster Mode SAPテンプレートの場所を入力してください。');return}
+ if(!imc||!sap){status('IMCの実行ファイルを入力し、初回設定を登録してください。');return}
  if(name&&!/^[A-Za-z0-9-]{1,32}$/.test(name)){status('AT5名の先頭文字は半角英数字とハイフンで入力してください。');return}
  await persist();running=true;document.getElementById('build').disabled=true;status('Buildを開始しました。完了までこの画面を開いたままにしてください。');
  
@@ -147,10 +157,10 @@ document.getElementById('build').onclick=async()=>{
 };
 document.getElementById('runPowerShell').onclick=async()=>{
  if(running)return;
- const a=parseBox(box.value),dest=copyTo.value.trim(),name=mapName.value.trim(),imc=imcExe.value.trim(),sap=templateSap.value.trim();
+ const a=parseBox(box.value),dest=copyTo.value.trim(),name=mapName.value.trim(),imc=imcExe.value.trim(),sap=templateSapPath.trim();
  if(!valid(a)){status('先に正しいbboxを指定してください。');return}
  if(!dest){status('出力先パスを入力してください。');return}
- if(!imc||!sap){status('IMC実行ファイルとRaster Mode SAPテンプレートの場所を入力してください。');return}
+ if(!imc||!sap){status('IMCの実行ファイルを入力し、初回設定を登録してください。');return}
  if(name&&!/^[A-Za-z0-9-]{1,32}$/.test(name)){status('AT5名の先頭文字は半角英数字とハイフンで入力してください。');return}
  try{const r=await fetch('/powershell',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bbox:a,copyTo:dest,at5Prefix:name,imcExe:imc,templateSap:sap})});const j=await r.json();if(!r.ok)throw Error(j.error||'PowerShellを起動できません');await persist();running=true;document.getElementById('build').disabled=true;status(j.message);poll()}catch(e){status(String(e))}
 };
@@ -159,7 +169,7 @@ async function poll(){
  if(j.running){setTimeout(poll,1200)}else{running=false;document.getElementById('build').disabled=false;status(j.result||'処理が終了しました。ログを確認してください。')}
  }catch(e){setTimeout(poll,2000)}
 }
-(async()=>{try{const s=await (await fetch('/state')).json();copyTo.value=s.copyTo||copyTo.value;mapName.value=s.at5Prefix||'';imcExe.value=s.imcExe||'';templateSap.value=s.templateSap||'';setBox(s.bbox||[35.140,139.130,35.330,139.590],false);status('範囲を読み込みました。地図はドラッグで移動できます。')}catch(e){setBox([35.140,139.130,35.330,139.590],false);status('既定の範囲を表示しています。')}})();
+(async()=>{try{const s=await (await fetch('/state')).json();copyTo.value=s.copyTo||copyTo.value;mapName.value=s.at5Prefix||'';imcExe.value=s.imcExe||'';templateSapPath=s.templateSap||'';updateTemplateStatus();setBox(s.bbox||[35.140,139.130,35.330,139.590],false);status('範囲を読み込みました。地図はドラッグで移動できます。')}catch(e){setBox([35.140,139.130,35.330,139.590],false);status('既定の範囲を表示しています。')}})();
 </script>
 </body>
 </html>
@@ -212,7 +222,7 @@ class AppState:
             if not imc_exe.is_file():
                 raise FileNotFoundError(f"InsightMapCreator.exeがありません: {imc_exe}")
             if not template_sap.is_file():
-                raise FileNotFoundError(f"Raster Mode SAPテンプレートがありません: {template_sap}")
+                raise FileNotFoundError(f"IMCの設定ファイルがありません: {template_sap}")
             if not BUILDER.is_file():
                 raise FileNotFoundError(f"Buildスクリプトがありません: {BUILDER}")
             self.save({"bbox": bbox, "copyTo": copy_to, "at5Prefix": at5_prefix, "imcExe": str(imc_exe), "templateSap": str(template_sap)})
@@ -276,7 +286,7 @@ class AppState:
         if not imc_exe.is_file():
             raise FileNotFoundError(f"InsightMapCreator.exeがありません: {imc_exe}")
         if not template_sap.is_file():
-            raise FileNotFoundError(f"Raster Mode SAPテンプレートがありません: {template_sap}")
+            raise FileNotFoundError(f"IMCの設定ファイルがありません: {template_sap}")
         if not BUILDER.is_file():
             raise FileNotFoundError(f"Buildスクリプトがありません: {BUILDER}")
         self.save({"bbox": bbox, "copyTo": copy_to, "at5Prefix": at5_prefix, "imcExe": str(imc_exe), "templateSap": str(template_sap)})
@@ -334,6 +344,23 @@ def validate_at5_prefix(value):
         raise ValueError("AT5名の先頭文字は32文字以内で指定してください")
     return prefix
 
+def select_template_file():
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+    except ImportError as exc:
+        raise RuntimeError("ファイル選択画面を開けません。PythonのTk機能が利用できません") from exc
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+    try:
+        return filedialog.askopenfilename(
+            title="IMCでRaster Modeとして保存した設定を選択",
+            filetypes=[("IMC設定ファイル", "*.sap"), ("すべてのファイル", "*.*")],
+        )
+    finally:
+        root.destroy()
+
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = urlparse(self.path).path
@@ -358,7 +385,9 @@ class Handler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0"))
             data = json.loads(self.rfile.read(length).decode("utf-8"))
-            if path == "/state":
+            if path == "/select-template":
+                self.send_json(200, {"path": select_template_file()})
+            elif path == "/state":
                 self.send_json(200, state.save(data))
             elif path == "/build":
                 state.start_build(data)
