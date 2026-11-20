@@ -413,7 +413,14 @@ def find_raster_template(imc_exe):
                     )
                 for info in members:
                     raw = bundle.read(info)
-                    normalized = upgrade_legacy_raster_sap(raw)
+                    try:
+                        normalized = upgrade_legacy_raster_sap(raw)
+                    except (ValueError, IndexError, struct.error) as exc:
+                        archive_details.append(
+                            f"{archive.name}!{info.filename}: "
+                            f"signature={raw[:4]!r}, SAP変換失敗 ({exc})"
+                        )
+                        continue
                     valid = _is_raster_template_bytes(normalized)
                     conversion = "、GPBfからGPB2へ変換" if normalized != raw else ""
                     archive_details.append(
