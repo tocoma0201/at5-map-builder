@@ -207,19 +207,39 @@ def main(argv=None):
             resolution *= 2
 
         files_by_resolution = {}
+        resolution_by_source = {}
         for path in at5_files:
-            match = re.fullmatch(
-                r"_3DTexture_(\d+(?:\.\d+)?)(?:_(\d+))?\.at5",
-                path.name,
-            )
-            if not match:
+            marker = "_3DTexture_"
+            if not path.name.startswith(marker) or not path.name.endswith(".at5"):
                 raise RuntimeError(
                     f"想定外のAT5ファイル名があるためコピーを中止します: {path.name}"
                 )
-            level = float(match.group(1))
-            files_by_resolution.setdefault(level, []).append(
-                (match.group(2), path)
-            )
+            parts = path.name[len(marker):-4].split("_")
+            level = None
+            index = None
+            # IMCがWork Directory名を挿入する場合があるため、
+            # 末尾側から解像度と分割番号を読み取る。
+            if len(parts) >= 2 and parts[-1].isdigit():
+                try:
+                    candidate = float(parts[-2])
+                except ValueError:
+                    candidate = None
+                if candidate in expected_resolutions:
+                    level = candidate
+                    index = parts[-1]
+            if level is None:
+                try:
+                    candidate = float(parts[-1])
+                except (ValueError, IndexError):
+                    candidate = None
+                if candidate in expected_resolutions:
+                    level = candidate
+            if level is None:
+                raise RuntimeError(
+                    f"AT5名から想定解像度を読み取れません: {path.name}"
+                )
+            resolution_by_source[path] = (level, index)
+            files_by_resolution.setdefault(level, []).append((index, path))
 
         actual_resolutions = set(files_by_resolution)
         if actual_resolutions != expected_resolutions:
@@ -245,10 +265,14 @@ def main(argv=None):
         required = sum(p.stat().st_size for p in at5_files)
         if shutil.disk_usage(destination).free < required:
             raise OSError(f"コピー先の空き容量が不足しています: {destination}")
-        names_by_source = {
-            source: (args.at5_prefix + source.name if args.at5_prefix else source.name)
-            for source in at5_files
-        }
+        names_by_source = {}
+        for source in at5_files:
+            level, index = resolution_by_source[source]
+            level_name = f"{level:g}"
+            index_suffix = f"_{int(index)}" if index is not None else ""
+            names_by_source[source] = (
+                f"{args.at5_prefix}_3DTexture_{level_name}{index_suffix}.at5"
+            )
         for source, target_name in names_by_source.items():
             temp = destination / (target_name + ".tmp")
             try:
