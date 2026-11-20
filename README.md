@@ -3,6 +3,8 @@
 地理院タイルから地図画像を取得し、Insight Map Creator（IMC）でLowrance機器向けのAT5ラスター地図を作成するWindows用ツールです。地図範囲はブラウザー画面で選べます。Pythonやコマンドを普段使わない方も、手順に沿ってセットアップできます。
 
 > **対応機種について：** 作成したAT5ラスター地図はLowrance Elite Ti2で表示を確認しています。その他の機種では動作確認をしていません。AT5ラスター地図への対応や操作メニューは機種・ソフトウェアバージョンにより異なる可能性があるため、利用前にお使いの機器で確認してください。
+>
+> 他機種で表示を確認できた方は、機種名・ソフトウェアバージョン・表示結果を[GitHub Discussions](https://github.com/tocoma0201/at5-map-builder/discussions)でお知らせください。
 
 > **対応環境：Windows 10/11のみ。** IMCのWindows版を起動してAT5を作るため、macOS・Linuxでは動作しません。
 
@@ -66,6 +68,10 @@ Pythonをインストールした直後は、開いているPowerShellやエク�
 ### 4. Insight Map Creatorを用意
 
 IMCはこのリポジトリに同梱していません。配布元から取得し、READMEの案内に沿って展開してください。IMC本体ZIPを展開し、Sample ZIPまたは展開済みのIMC_Sampleフォルダーを残せばツールがRaster Mode設定を読み取ります。Sample ZIPをすでに展開済みなら、検出できる場所にIMC_Sampleフォルダーがある限りZIPを削除しても構いません。詳しくは [IMC_INSTALL.md](./IMC_INSTALL.md) を参照してください。
+
+## 困ったとき
+
+インストールで困った場合は、このREADMEのURL（https://github.com/tocoma0201/at5-map-builder）をAIサービスに伝えて相談する方法もあります。エラー画面やログを共有する場合は、ユーザー名や個人のフォルダー名などが含まれていないか確認してください。
 
 ## 起動と地図作成
 

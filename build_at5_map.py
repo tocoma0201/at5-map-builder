@@ -249,12 +249,12 @@ def main(argv=None):
             files_by_resolution.setdefault(level, []).append((index, path))
 
         actual_resolutions = set(files_by_resolution)
-        if actual_resolutions != expected_resolutions:
-            expected = ", ".join(f"{value:g}" for value in sorted(expected_resolutions))
-            actual = ", ".join(f"{value:g}" for value in sorted(actual_resolutions))
-            raise RuntimeError(
-                f"想定したAT5レベルと一致しないためコピーを中止します。"
-                f"想定=[{expected}] 実際=[{actual}]"
+        missing_resolutions = expected_resolutions - actual_resolutions
+        if missing_resolutions:
+            missing = ", ".join(f"{value:g}" for value in sorted(missing_resolutions))
+            print(
+                "注意: IMCが一部の解像度レベルを出力しませんでした。"
+                f"生成済みのAT5をコピーします。未出力=[{missing}]"
             )
 
         for level, entries in files_by_resolution.items():
