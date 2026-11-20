@@ -46,7 +46,6 @@ textarea{height:62px;resize:vertical} button{cursor:pointer;background:#eef4f7}
 .good{background:#e8f6ec;color:#175b2b}
 .warning{background:#fff0d9;color:#754500}
 .note{font-size:13px;color:#52606b;line-height:1.45}
-.hint{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;margin-left:3px;border:1px solid #738491;border-radius:50%;font-size:12px;color:#52606b;cursor:help;vertical-align:middle}
 #status{white-space:pre-wrap;background:#f4f6f8;padding:9px;min-height:42px;margin-top:10px}
 @media(max-width:800px){main{display:flex;flex-direction:column}aside{border:0}#map{height:55vh;min-height:380px}}
 </style>
@@ -63,8 +62,8 @@ textarea{height:62px;resize:vertical} button{cursor:pointer;background:#eef4f7}
 <div id="estimate" class="note"></div>
 <label for="mapName">Ti2で選ぶ地図名／AT5先頭文字（任意）</label>
 <input id="mapName" placeholder="例: Map01" maxlength="32">
-<label for="copyTo">出力先フォルダー <span class="hint" tabindex="0" role="img" aria-label="SDカードに保存する場合のフォルダー指定方法" title="SDカードに保存する場合は、カード直下の ShadedRelief フォルダーを指定してください。例：F:\ShadedRelief。PCに保存する場合は任意のフォルダーを指定できます。">ⓘ</span></label>
-<input id="copyTo" placeholder="例: F:\ShadedRelief">
+<label for="copyTo">出力先フォルダー</label>
+<input id="copyTo" placeholder="例: F:\ShadedRelief" title="SDカードに保存する場合は、カード直下の ShadedRelief フォルダーを指定してください。例：F:\ShadedRelief。PCに保存する場合は任意のフォルダーを指定できます。">
 <label for="imcExe">Insight Map Creator の実行ファイル</label>
 <input id="imcExe" placeholder="InsightMapCreator.exe のフルパス">
 <label for="templateSap">Raster Mode SAPテンプレート</label>
