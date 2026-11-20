@@ -45,7 +45,8 @@ textarea{height:62px;resize:vertical} button{cursor:pointer;background:#eef4f7}
 .primary{background:#176b9b;color:white;border-color:#176b9b}
 .good{background:#e8f6ec;color:#175b2b}
 .warning{background:#fff0d9;color:#754500}
-.note{font-size:13px;color:#52606b;line-height:1.45}\n.hint{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;margin-left:3px;border:1px solid #738491;border-radius:50%;font-size:12px;color:#52606b;cursor:help;vertical-align:middle}
+.note{font-size:13px;color:#52606b;line-height:1.45}
+.hint{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;margin-left:3px;border:1px solid #738491;border-radius:50%;font-size:12px;color:#52606b;cursor:help;vertical-align:middle}
 #status{white-space:pre-wrap;background:#f4f6f8;padding:9px;min-height:42px;margin-top:10px}
 @media(max-width:800px){main{display:flex;flex-direction:column}aside{border:0}#map{height:55vh;min-height:380px}}
 </style>
