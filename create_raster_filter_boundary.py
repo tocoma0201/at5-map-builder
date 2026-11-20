@@ -18,7 +18,7 @@ WGS84_PRJ = (
 )
 
 
-# 日本語: 矩形境界をSHP、SHX、DBFのバイナリレコードへ変換する。
+# 矩形境界をSHP、SHX、DBFのバイナリレコードへ変換する。
 def make_shapefile_records(west, south, east, north):
     """SHP/SHX/DBFの最小構成を返す。外周は時計回り、WGS84経緯度。"""
     if not (-180 <= west < east <= 180 and -90 <= south < north <= 90):
@@ -58,7 +58,7 @@ def make_shapefile_records(west, south, east, north):
     return shp, shx, dbf
 
 
-# 日本語: メタデータから全画像チャンクを含む外接範囲を求める。
+# メタデータから全画像チャンクを含む外接範囲を求める。
 def bounds_from_metadata(metadata_path):
     data = json.loads(metadata_path.read_text(encoding="utf-8"))
     if data.get("complete") is True:
@@ -85,7 +85,7 @@ def bounds_from_metadata(metadata_path):
     return west, south, east, north
 
 
-# 日本語: 指定範囲からRaster Filter用の最小構成Shapefileを作る。
+# 指定範囲からRaster Filter用の最小構成Shapefileを作る。
 def write_filter_shapefile(metadata_path, output_path, inset_percent=0.0):
     if not 0 <= inset_percent < 50:
         raise ValueError("inset-percentは0以上50未満にしてください")
@@ -107,7 +107,7 @@ def write_filter_shapefile(metadata_path, output_path, inset_percent=0.0):
     print("この境界は比較試験用です。SHP単独で黒枠を消す・画像を透明化する機能ではありません。")
 
 
-# 日本語: メタデータと出力先を受け取り、境界Shapefileを作成する。
+# メタデータと出力先を受け取り、境界Shapefileを作成する。
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("metadata", type=Path, help="生成済み source-metadata.json")

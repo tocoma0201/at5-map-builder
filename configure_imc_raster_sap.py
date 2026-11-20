@@ -18,7 +18,7 @@ from pathlib import Path
 MAGIC = b"GPB2"
 
 
-# 日本語: Protobufの可変長整数を読み取る。
+# Protobufの可変長整数を読み取る。
 def read_varint(data, pos):
     value = 0
     shift = 0
@@ -34,7 +34,7 @@ def read_varint(data, pos):
     raise ValueError("varintが途中で終わっています")
 
 
-# 日本語: 整数をProtobufの可変長整数形式へ変換する。
+# 整数をProtobufの可変長整数形式へ変換する。
 def encode_varint(value):
     if value < 0:
         raise ValueError("varintは非負整数である必要があります")
@@ -46,7 +46,7 @@ def encode_varint(value):
     return bytes(out)
 
 
-# 日本語: Protobufの各フィールドを解析し、未知フィールドも順序を保って記録する。
+# Protobufの各フィールドを解析し、未知フィールドも順序を保って記録する。
 def parse_fields(data):
     """Protobufの各フィールドを解析し、未知フィールドも含めて順序を保つ。"""
     fields = []
@@ -86,12 +86,12 @@ def parse_fields(data):
     return fields
 
 
-# 日本語: length-delimited形式のフィールドを組み立てる。
+# length-delimited形式のフィールドを組み立てる。
 def encode_length_field(number, value):
     return encode_varint((number << 3) | 2) + encode_varint(len(value)) + value
 
 
-# 日本語: 指定フィールドが一つだけあることを確認して値を置き換える。
+# 指定フィールドが一つだけあることを確認して値を置き換える。
 def replace_single_length_field(message, number, new_value, label):
     fields = parse_fields(message)
     matches = [i for i, field in enumerate(fields)
@@ -104,7 +104,7 @@ def replace_single_length_field(message, number, new_value, label):
     return b"".join(field[3] for field in fields)
 
 
-# 日本語: 既存のlength-delimitedフィールドを更新し、なければ追加する。
+# 既存のlength-delimitedフィールドを更新し、なければ追加する。
 def set_length_field(message, number, new_value, label):
     """既存のlength-delimited形式のフィールドを置き換え、なければ追加する。"""
     fields = parse_fields(message)
@@ -124,7 +124,7 @@ def set_length_field(message, number, new_value, label):
 
 
 
-# 日本語: 既存のvarintフィールドを更新し、なければ追加する。
+# 既存のvarintフィールドを更新し、なければ追加する。
 def set_varint_field(message, number, new_value, label):
     """既存のvarintフィールドを更新し、テンプレートにない場合は追加する。"""
     if new_value < 0:
@@ -143,7 +143,7 @@ def set_varint_field(message, number, new_value, label):
     return message + encoded
 
 
-# 日本語: 指定varintフィールドを一意に特定して置き換える。
+# 指定varintフィールドを一意に特定して置き換える。
 def replace_single_varint_field(message, number, new_value, label):
     if new_value < 0:
         raise ValueError(f"{label}: 値は0以上にしてください")
@@ -157,7 +157,7 @@ def replace_single_varint_field(message, number, new_value, label):
     fields[index] = (number, 0, encode_varint(new_value), encoded)
     return b"".join(field[3] for field in fields)
 
-# 日本語: 指定fixed32フィールドを一意に特定して浮動小数値へ置き換える。
+# 指定fixed32フィールドを一意に特定して浮動小数値へ置き換える。
 def replace_single_fixed32_field(message, number, new_value, label):
     fields = parse_fields(message)
     matches = [i for i, field in enumerate(fields)
@@ -170,7 +170,7 @@ def replace_single_fixed32_field(message, number, new_value, label):
     fields[index] = (number, 5, value, encoded)
     return b"".join(field[3] for field in fields)
 
-# 日本語: 番号とwire形式で指定したフィールドが一つだけか確認する。
+# 番号とwire形式で指定したフィールドが一つだけか確認する。
 def one_field(fields, number, wire, label):
     matches = [f for f in fields if f[0] == number and f[1] == wire]
     if len(matches) != 1:
@@ -178,7 +178,7 @@ def one_field(fields, number, wire, label):
     return matches[0]
 
 
-# 日本語: IMC設定用にパス区切りを揃え、必要なら末尾スラッシュを付ける。
+# IMC設定用にパス区切りを揃え、必要なら末尾スラッシュを付ける。
 def normalize_imc_path(path, directory=False):
     value = str(Path(path).resolve()).replace("\\", "/")
     if directory:
@@ -186,17 +186,17 @@ def normalize_imc_path(path, directory=False):
     return value
 
 
-# 日本語: 番号と値からvarintフィールドを組み立てる。
+# 番号と値からvarintフィールドを組み立てる。
 def encode_varint_field(number, value):
     return encode_varint((number << 3) | 0) + encode_varint(value)
 
 
-# 日本語: 番号と値からlittle-endian fixed32フィールドを組み立てる。
+# 番号と値からlittle-endian fixed32フィールドを組み立てる。
 def encode_fixed32_field(number, value):
     return encode_varint((number << 3) | 5) + struct.pack("<f", float(value))
 
 
-# 日本語: 旧形式SAPから指定フィールドの値を一意に取り出す。
+# 旧形式SAPから指定フィールドの値を一意に取り出す。
 def _legacy_value(fields, number, wire, required=True):
     matches = [field for field in fields if field[0] == number and field[1] == wire]
     if len(matches) > 1 or (required and not matches):
@@ -204,7 +204,7 @@ def _legacy_value(fields, number, wire, required=True):
     return matches[0][2] if matches else None
 
 
-# 日本語: 旧形式SAPのvarint値を読み、必要なら既定値を使う。
+# 旧形式SAPのvarint値を読み、必要なら既定値を使う。
 def _legacy_varint(fields, number, default=None):
     raw = _legacy_value(fields, number, 0, required=default is None)
     if raw is None:
@@ -215,7 +215,7 @@ def _legacy_varint(fields, number, default=None):
     return value
 
 
-# 日本語: 旧形式SAPに格納された長さ付き文字列の並びを読み取る。
+# 旧形式SAPに格納された長さ付き文字列の並びを読み取る。
 def _legacy_strings(payload):
     """GPBf形式に格納された長さ付き文字列をUTF-8またはWindows-1252で読む。"""
     values = []
@@ -234,7 +234,7 @@ def _legacy_strings(payload):
     return values
 
 
-# 日本語: 旧形式SAPの文字列をUTF-8、次にWindows-1252で復号する。
+# 旧形式SAPの文字列をUTF-8、次にWindows-1252で復号する。
 def _legacy_text(payload, label):
     try:
         return payload.decode("utf-8")
@@ -245,7 +245,7 @@ def _legacy_text(payload, label):
             raise ValueError(f"旧形式SAP: {label}の文字コードを読めません") from exc
 
 
-# 日本語: 旧GPBf形式のRaster SAPを現行GPB2形式へ変換する。
+# 旧GPBf形式のRaster SAPを現行GPB2形式へ変換する。
 def upgrade_legacy_raster_sap(raw):
     """IMC 0.6.5.xのGPBf形式Raster SAPを0.7.4.xのGPB2形式へ変換する。"""
     if not raw.startswith(b"GPBf"):
@@ -321,7 +321,7 @@ def upgrade_legacy_raster_sap(raw):
     return MAGIC + encode_varint(len(converted)) + converted
 
 
-# 日本語: 変換済みテンプレートを内容識別子付きのユーザーキャッシュへ保存する。
+# 変換済みテンプレートを内容識別子付きのユーザーキャッシュへ保存する。
 def _cache_template(raw, identity, filename):
     digest = hashlib.sha256(identity.encode("utf-8") + b"\0" + raw).hexdigest()[:16]
     cache_root = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "AT5MapBuilder" / "imc-template-cache"
@@ -332,7 +332,7 @@ def _cache_template(raw, identity, filename):
     return cached
 
 
-# 日本語: SAPデータが現行形式のRaster Mode設定か判定する。
+# SAPデータが現行形式のRaster Mode設定か判定する。
 def _is_raster_template_bytes(raw):
     """バイト列がIMC Raster Mode設定か確認する。"""
     try:
@@ -360,7 +360,7 @@ def _is_raster_template_bytes(raw):
         return False
 
 
-# 日本語: ファイルを読み、Raster Mode設定か判定する。
+# ファイルを読み、Raster Mode設定か判定する。
 def is_raster_template(path):
     """ファイルが判別可能なIMC Raster Mode設定か確認する。"""
     try:
@@ -369,7 +369,7 @@ def is_raster_template(path):
         return False
 
 
-# 日本語: IMCフォルダーとSample ZIPからRaster Mode設定を探して必要なら変換する。
+# IMCフォルダーとSample ZIPからRaster Mode設定を探して必要なら変換する。
 def find_raster_template(imc_exe):
     """IMC配布物のサンプルからRaster Mode設定を探す。ZIPは展開せず直接読み取る。"""
     exe_dir = Path(imc_exe).resolve().parent
@@ -493,7 +493,7 @@ def find_raster_template(imc_exe):
     raise FileNotFoundError(detail)
 
 
-# 日本語: Raster Mode SAPの入力、出力、解像度、フィルター、地図説明を設定する。
+# Raster Mode SAPの入力、出力、解像度、フィルター、地図説明を設定する。
 def configure_sap(source, output, work_dir, raster_filter,
                   source_folder=None, min_resolution=None, max_resolution=None,
                   filter_alpha=None, filter_image_boundary=None,
@@ -674,7 +674,7 @@ def configure_sap(source, output, work_dir, raster_filter,
     print(f"出力SAP: {output}")
 
 
-# 日本語: 引数を検証し、指定条件のRaster Mode SAPを生成する。
+# 引数を検証し、指定条件のRaster Mode SAPを生成する。
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("sap", type=Path, help="元のRaster Mode SAP（変更しません）")

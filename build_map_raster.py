@@ -16,7 +16,7 @@ DEFAULT_BBOX = (35.140, 139.130, 35.330, 139.590)
 DEFAULT_ZOOM = 15
 DEFAULT_CHUNK_TILES = 8
 
-# 日本語: タイル範囲をIMCの最大画像サイズに合わせて分割する。
+# タイル範囲をIMCの最大画像サイズに合わせて分割する。
 def make_chunks(bbox, zoom, chunk_tiles):
     """地図のXYZタイル範囲を重複・隙間なく分割する（外縁はタイル端）。"""
     if not 1 <= chunk_tiles <= 8:
@@ -48,7 +48,7 @@ def make_chunks(bbox, zoom, chunk_tiles):
     return coverage, chunks
 
 
-# 日本語: 画像ピクセルと緯度経度を対応付けるPGWを書き出す。
+# 画像ピクセルと緯度経度を対応付けるPGWを書き出す。
 def write_world_file(input_dir, chunk):
     """GroundOverlayのLatLonBoxと同じ範囲をPGWに記録する。"""
     bounds = chunk["bounds"]
@@ -71,7 +71,7 @@ def write_world_file(input_dir, chunk):
             temp.unlink()
 
 
-# 日本語: 分割画像を地理座標上に配置するGroundOverlay KMLを作る。
+# 分割画像を地理座標上に配置するGroundOverlay KMLを作る。
 def overlays_kml(chunks):
     """IMC Keyhole Modeでファイル指定するKML。PNGを同じフォルダに配置。"""
     parts = ['<?xml version="1.0" encoding="UTF-8"?>',
@@ -97,7 +97,7 @@ def overlays_kml(chunks):
     return '\n'.join(parts)
 
 
-# 日本語: 緯度に応じた経度補正を行い、指定海里分だけ範囲を広げる。
+# 緯度に応じた経度補正を行い、指定海里分だけ範囲を広げる。
 def expand_bbox_nm(bbox, margin_nm):
     """指定した海里分だけ範囲を全周へ広げる（緯度経度近似）。"""
     if margin_nm < 0:
@@ -109,7 +109,7 @@ def expand_bbox_nm(bbox, margin_nm):
     return south - lat_pad, west - lon_pad, north + lat_pad, east + lon_pad
 
 
-# 日本語: 要求範囲、タイル、画像分割情報を再開用マニフェストにまとめる。
+# 要求範囲、タイル、画像分割情報を再開用マニフェストにまとめる。
 def plan_data(bbox, zoom, chunk_tiles):
     coverage, chunks = make_chunks(bbox, zoom, chunk_tiles)
     return {
@@ -128,14 +128,14 @@ def plan_data(bbox, zoom, chunk_tiles):
     }
 
 
-# 日本語: 既存マニフェストが今回の生成条件と一致するか比較する。
+# 既存マニフェストが今回の生成条件と一致するか比較する。
 def is_same_plan(saved, expected):
     fields = ("schema_version", "preset", "zoom", "requested_bbox",
               "chunk_tiles", "tile_count", "tile_range", "chunk_count", "chunks")
     return all(saved.get(field) == expected.get(field) for field in fields)
 
 
-# 日本語: 既存フォルダーの内容を調べ、安全に再利用できるか確認する。
+# 既存フォルダーの内容を調べ、安全に再利用できるか確認する。
 def validate_output_directory(out, plan):
     """既存の平塚パイロットや異なる設定の出力を上書きしない。"""
     out = out.resolve()
@@ -157,7 +157,7 @@ def validate_output_directory(out, plan):
             raise ValueError(f"出力先に想定外のファイルがあります: {unknown[:5]}")
 
 
-# 日本語: タイルを取得して分割PNGを作り、完了後にKMLとメタデータを保存する。
+# タイルを取得して分割PNGを作り、完了後にKMLとメタデータを保存する。
 def generate_images(out, plan, refresh=False, tile_loader=fetch_tile):
     """出力を前回と同じ条件で再開できる。完了前の生成物はIMCに渡さない。"""
     try:
@@ -223,7 +223,7 @@ def generate_images(out, plan, refresh=False, tile_loader=fetch_tile):
     print("このツールはAT5化・SDカードへの書き込みを行いません")
 
 
-# 日本語: 引数を検証し、タイル取得計画と画像生成を実行する。
+# 引数を検証し、タイル取得計画と画像生成を実行する。
 def main(argv=None):
     parser = argparse.ArgumentParser(description="指定範囲の分割ラスターIMC入力データを作成")
     parser.add_argument("--bbox", nargs=4, type=float, default=DEFAULT_BBOX,

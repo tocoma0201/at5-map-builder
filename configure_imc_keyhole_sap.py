@@ -11,7 +11,7 @@ from configure_imc_raster_sap import (
 )
 
 
-# 日本語: Raster ModeのSAPを複製し、Keyhole Mode入力KMLを設定する。
+# Raster ModeのSAPを複製し、Keyhole Mode入力KMLを設定する。
 def configure_keyhole_sap(source, kml, output):
     source = Path(source).resolve()
     kml = Path(kml).resolve()
@@ -74,7 +74,7 @@ def configure_keyhole_sap(source, kml, output):
     print(f"Keyhole用SAP: {output}")
 
 
-# 日本語: コマンドライン引数を読み取り、Keyhole用SAPを作成する。
+# コマンドライン引数を読み取り、Keyhole用SAPを作成する。
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("sap", type=Path, help="GUIで保存したIMCプロジェクトSAP")

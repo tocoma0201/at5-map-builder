@@ -24,7 +24,7 @@ STATE_DIR = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "AT5MapBuil
 STATE_FILE = STATE_DIR / "range-ui-state.json"
 DEFAULT_COPY_TO = ""
 DEFAULT_IMC_EXE = os.environ.get("AT5_IMC_EXE", "")
-# 日本語: 画面表示の版番号をVERSIONファイルで一元管理する。
+# 画面表示の版番号をVERSIONファイルで一元管理する。
 TOOL_VERSION = (ROOT / "VERSION").read_text(encoding="ascii").strip()
 
 HTML = r"""<!doctype html>
@@ -211,16 +211,16 @@ async function poll(){
 </html>
 """
 
-# 日本語: UIとビルドの状態をまとめて管理する。
+# UIとビルドの状態をまとめて管理する。
 class AppState:
-    # 日本語: 実行状態、ログ、排他制御用ロックを初期化する。
+    # 実行状態、ログ、排他制御用ロックを初期化する。
     def __init__(self):
         self.lock = threading.Lock()
         self.running = False
         self.log = ""
         self.result = ""
 
-    # 日本語: 前回の入力値を設定ファイルから読み込み、未設定項目は既定値で補う。
+    # 前回の入力値を設定ファイルから読み込み、未設定項目は既定値で補う。
     def read_saved(self):
         try:
             data = json.loads(STATE_FILE.read_text(encoding="utf-8"))
@@ -236,7 +236,7 @@ class AppState:
         except (OSError, ValueError, TypeError):
             return {"bbox": DEFAULT_BBOX, "copyTo": DEFAULT_COPY_TO, "at5Prefix": "", "imcExe": DEFAULT_IMC_EXE, "templateSap": ""}
 
-    # 日本語: 範囲や出力先、IMCの場所を検証してユーザー設定へ保存する。
+    # 範囲や出力先、IMCの場所を検証してユーザー設定へ保存する。
     def save(self, data):
         bbox = validate_bbox(data.get("bbox"))
         copy_to = str(data.get("copyTo", DEFAULT_COPY_TO)).strip()
@@ -250,7 +250,7 @@ class AppState:
         STATE_FILE.write_text(json.dumps(saved, ensure_ascii=False, indent=2), encoding="utf-8")
         return saved
 
-    # 日本語: IMC実行ファイルを確認し、Raster Mode設定を検出して保存する。
+    # IMC実行ファイルを確認し、Raster Mode設定を検出して保存する。
     def set_imc(self, data):
         raw_path = str(data.get("imcExe", "")).strip().strip('"')
         if not raw_path:
@@ -266,7 +266,7 @@ class AppState:
         result["imcConfigured"] = True
         return result
 
-    # 日本語: ブラウザーから受け取った設定を確認し、ビルドをバックグラウンドで開始する。
+    # ブラウザーから受け取った設定を確認し、ビルドをバックグラウンドで開始する。
     def start_build(self, data):
         with self.lock:
             if self.running:
@@ -293,7 +293,7 @@ class AppState:
             self.log = ""
             self.result = "Buildを実行中です"
 
-        # 日本語: 変換スクリプトを実行し、進行ログと終了結果を状態へ反映する。
+        # 変換スクリプトを実行し、進行ログと終了結果を状態へ反映する。
         def worker():
             command = [
                 sys.executable, str(BUILDER),
@@ -333,7 +333,7 @@ class AppState:
 
         threading.Thread(target=worker, daemon=True).start()
 
-    # 日本語: 編集済みのPowerShellコマンドを別ウィンドウで実行する。
+    # 編集済みのPowerShellコマンドを別ウィンドウで実行する。
     def launch_powershell(self, data):
         if os.name != "nt":
             raise RuntimeError("PowerShell実行ボタンはWindows上で起動した場合に使えます")
@@ -369,7 +369,7 @@ class AppState:
             self.running = True
             self.log = ""
             self.result = "別ウィンドウのPowerShellで実行中です"
-        # 日本語: PowerShellの終了を待ち、実行状態を解除する。
+        # PowerShellの終了を待ち、実行状態を解除する。
         def wait_for_powershell():
             code = proc.wait()
             with self.lock:
@@ -379,12 +379,12 @@ class AppState:
 
 state = AppState()
 
-# 日本語: 座標から再現可能な作業フォルダー名を作る。
+# 座標から再現可能な作業フォルダー名を作る。
 def output_dir_for_bbox(bbox):
     tag = "-".join(("m" if value < 0 else "p") + f"{round(abs(value) * 1_000_000):09d}" for value in bbox)
     return f"map-ui-{tag}"
 
-# 日本語: 南・西・北・東の順と緯度経度の範囲を検証する。
+# 南・西・北・東の順と緯度経度の範囲を検証する。
 def validate_bbox(value):
     if not isinstance(value, list) or len(value) != 4:
         raise ValueError("bboxは南・西・北・東の4数値で指定してください")
@@ -397,7 +397,7 @@ def validate_bbox(value):
         raise ValueError("bboxの範囲または南西北東の順を確認してください")
     return bbox
 
-# 日本語: Windowsのフォルダー選択画面でAT5の保存先を選ぶ。
+# Windowsのフォルダー選択画面でAT5の保存先を選ぶ。
 def select_output_directory(data):
     if os.name != "nt":
         raise RuntimeError("フォルダー選択画面はWindows上で利用できます")
@@ -423,7 +423,7 @@ def select_output_directory(data):
     return {"path": selected} if selected else {"cancelled": True}
 
 
-# 日本語: Windowsのファイル選択画面でInsightMapCreator.exeを選ぶ。
+# Windowsのファイル選択画面でInsightMapCreator.exeを選ぶ。
 def select_imc_executable(data):
     if os.name != "nt":
         raise RuntimeError("ファイル選択画面はWindows上で利用できます")
@@ -452,7 +452,7 @@ def select_imc_executable(data):
     return {"path": selected} if selected else {"cancelled": True}
 
 
-# 日本語: AT5名に使う先頭文字を許可文字と長さで検証する。
+# AT5名に使う先頭文字を許可文字と長さで検証する。
 def validate_at5_prefix(value):
     prefix = str(value or "").strip()
     if prefix and not all(char.isascii() and (char.isalnum() or char == "-") for char in prefix):
@@ -461,9 +461,9 @@ def validate_at5_prefix(value):
         raise ValueError("AT5名の先頭文字は32文字以内で指定してください")
     return prefix
 
-# 日本語: ローカルブラウザー画面からのHTTP要求を処理する。
+# ローカルブラウザー画面からのHTTP要求を処理する。
 class Handler(BaseHTTPRequestHandler):
-    # 日本語: 画面、保存設定、実行状況のGET要求を返す。
+    # 画面、保存設定、実行状況のGET要求を返す。
     def do_GET(self):
         path = urlparse(self.path).path
         if path == "/":
@@ -482,7 +482,7 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self.send_error(404)
 
-    # 日本語: 設定保存、パス選択、変換起動のPOST要求を振り分ける。
+    # 設定保存、パス選択、変換起動のPOST要求を振り分ける。
     def do_POST(self):
         path = urlparse(self.path).path
         try:
@@ -507,7 +507,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as exc:
             self.send_json(400, {"error": str(exc)})
 
-    # 日本語: JSONデータをHTTPレスポンスとして返す。
+    # JSONデータをHTTPレスポンスとして返す。
     def send_json(self, status, data):
         body = json.dumps(data, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
@@ -516,11 +516,11 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    # 日本語: 標準HTTPサーバーのアクセスログ出力を抑制する。
+    # 標準HTTPサーバーのアクセスログ出力を抑制する。
     def log_message(self, fmt, *args):
         pass
 
-# 日本語: ローカル専用Webサーバーを起動し、ブラウザーで画面を開く。
+# ローカル専用Webサーバーを起動し、ブラウザーで画面を開く。
 def main():
     if sys.version_info < (3, 9):
         raise SystemExit("Python 3.9 or later is required.")
