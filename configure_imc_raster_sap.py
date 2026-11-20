@@ -8,7 +8,10 @@ import hashlib
 import os
 import struct
 import sys
-import zipfile
+try:
+    import zipfile64.zipfile as zipfile
+except ImportError:
+    import zipfile
 from pathlib import Path
 
 
@@ -283,6 +286,12 @@ def find_raster_template(imc_exe):
                         cache_root.mkdir(parents=True, exist_ok=True)
                         cached.write_bytes(raw)
                     return cached
+        except NotImplementedError as exc:
+            archive_details.append(
+                f"{archive.name}: ZIP圧縮方式をPython標準機能で読めません ({exc})。"
+                "setup.ps1を実行してZIP対応を追加してください"
+            )
+            continue
         except (OSError, zipfile.BadZipFile, RuntimeError) as exc:
             archive_details.append(f"{archive.name}: 読み取り失敗 ({exc})")
             continue
