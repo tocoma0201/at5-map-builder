@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 from configure_imc_keyhole_sap import configure_keyhole_sap
-from configure_imc_raster_sap import configure_sap
+from configure_imc_raster_sap import configure_sap, find_raster_template
 
 
 def next_run_number(output_dir, resolution_label):
@@ -106,7 +106,7 @@ def main(argv=None):
                         help="地図範囲の四辺に加える余白（海里、標準0＝現行範囲）")
     parser.add_argument("--template-sap", type=Path,
                         default=None,
-                        help="IMCで保存したRaster Mode SAPテンプレート（必須）")
+                        help="上級者向け: IMC付属設定の自動検出に代えて設定ファイルを指定")
     parser.add_argument("--imc-exe", type=Path,
                         default=None, help="InsightMapCreator.exeの場所（必須）")
     parser.add_argument("--max-tiles", type=int, default=1000,
@@ -125,8 +125,6 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.at5_prefix and not re.fullmatch(r"[A-Za-z0-9-]{1,32}", args.at5_prefix):
         parser.error("--at5-prefixは半角英数字とハイフンの1〜32文字で指定してください")
-    if not args.template_sap:
-        parser.error("--template-sap でRaster Mode SAPテンプレートの場所を指定してください")
     if not args.imc_exe:
         parser.error("--imc-exe でInsightMapCreator.exeの場所を指定してください")
     supported_resolutions = {float(2 ** exponent) for exponent in range(14)}
@@ -145,14 +143,18 @@ def main(argv=None):
     if args.margin_nm:
         default_output = Path(f"{default_output}-margin-{args.margin_nm:g}nm")
     output_dir = (root / (args.output_dir or default_output)).resolve()
-    template_sap = args.template_sap.expanduser().resolve()
     imc_exe = args.imc_exe.expanduser().resolve()
-    source_folder = output_dir / "imc-input"
-
-    if not template_sap.is_file():
-        raise FileNotFoundError(f"指定したRaster Mode SAPテンプレートがありません: {template_sap}")
     if not imc_exe.is_file():
         raise FileNotFoundError(f"IMCがありません: {imc_exe}")
+    template_sap = (
+        args.template_sap.expanduser().resolve()
+        if args.template_sap
+        else find_raster_template(imc_exe)
+    )
+    if not template_sap.is_file():
+        raise FileNotFoundError(f"IMCの設定ファイルがありません: {template_sap}")
+    print(f"IMC付属の設定を使用: {template_sap}")
+    source_folder = output_dir / "imc-input"
 
     raster_command = [
         sys.executable, str(root / "build_map_raster.py"),
