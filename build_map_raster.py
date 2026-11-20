@@ -132,7 +132,7 @@ def is_same_plan(saved, expected):
 def validate_output_directory(out, plan):
     """既存の平塚パイロットや異なる設定の出力を上書きしない。"""
     out = out.resolve()
-        input_dir = out / "imc-input"
+    input_dir = out / "imc-input"
     manifest_path = out / "source-metadata.json"
     if manifest_path.exists():
         saved = json.loads(manifest_path.read_text(encoding="utf-8"))
