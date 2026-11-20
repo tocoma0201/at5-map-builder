@@ -69,7 +69,7 @@ dialog{border:1px solid #aab6bf;border-radius:8px;width:min(480px,calc(100vw - 3
 <div class="actions"><button id="imcSettings" type="button">IMC設定</button><span id="imcStatus" class="note">確認中…</span></div>
 <dialog id="imcDialog">
 <h2>IMCの場所を設定</h2>
-<p class="note">READMEの案内に沿ってIMCを展開し、InsightMapCreator.exeのフルパスを入力してください。設定はこのPCに保存されます。</p>
+<p class="note">エクスプローラーでInsightMapCreator.exeを右クリックして「パスのコピー」を選び、ここに貼り付けてください。設定はこのPCに保存され、「IMC設定」からいつでも変更できます。</p>
 <label for="imcPath">InsightMapCreator.exeのパス</label>
 <input id="imcPath" placeholder="例: C:\\Users\\名前\\Documents\\AT5MapBuilder\\IMC\\InsightMapCreator.exe">
 <p id="imcPathError" class="note warning"></p>
