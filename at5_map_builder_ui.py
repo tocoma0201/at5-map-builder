@@ -111,6 +111,7 @@ function valid(a){return a.length===4&&a.every(Number.isFinite)&&a[0]<a[2]&&a[1]
 function setBox(a,save=true){
  if(!valid(a)){status('範囲の数値が不正です。南 西 北 東の順に入力してください。');return}
  bbox=a.map(Number); box.value=bbox.map(x=>x.toFixed(6)).join(', ');
+ status('範囲を更新しました。');
  const bounds=[[bbox[0],bbox[1]],[bbox[2],bbox[3]]];
  if(rect)rect.setBounds(bounds);else rect=L.rectangle(bounds,{color:'#d23636',weight:2,fillOpacity:.10}).addTo(map);
  map.fitBounds(bounds,{padding:[12,12]}); updateCommand(); updateEstimate();
