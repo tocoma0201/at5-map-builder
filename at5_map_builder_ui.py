@@ -102,7 +102,7 @@ imcPath.addEventListener('paste',e=>{
  if(!pasted)return;
  const trimmed=pasted.trim();
  const clean=trimmed.length>=2&&trimmed.startsWith('"')&&trimmed.endsWith('"')?trimmed.slice(1,-1):pasted;
- if(clean!==pasted){e.preventDefault();document.execCommand('insertText',false,clean)}
+ if(clean!==pasted){e.preventDefault();const start=imcPath.selectionStart,end=imcPath.selectionEnd;imcPath.setRangeText(clean,start,end,'end');imcPath.dispatchEvent(new Event('input',{bubbles:true}))}
 });
 
 function valid(a){return a.length===4&&a.every(Number.isFinite)&&a[0]<a[2]&&a[1]<a[3]&&a[0]>=-90&&a[2]<=90&&a[1]>=-180&&a[3]<=180}
