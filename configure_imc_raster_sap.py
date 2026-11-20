@@ -554,6 +554,7 @@ def configure_sap(source, output, work_dir, raster_filter,
 
     # Some Sample presets do not include a Keyhole Mode input. If present,
     # keep its KML path aligned with the new raster source folder.
+    source_name = None
     if source_folder is not None:
         root_fields = parse_fields(body_updated)
         source_refs = [f for f in root_fields if f[0] == 4 and f[1] == 2]
@@ -636,7 +637,8 @@ def configure_sap(source, output, work_dir, raster_filter,
     print("Raster Filter:", raster_filter if raster_filter is not None else "(なし)")
     if source_folder is not None:
         print(f"Source Folder: {source_folder}")
-        print(f"Keyhole Input: {source_folder / source_name}")
+        if source_name is not None:
+            print(f"Keyhole Input: {source_folder / source_name}")
     if min_resolution is not None:
         print(f"Resolution: Min={min_resolution}, Max={max_resolution}")
     if filter_alpha is not None:
