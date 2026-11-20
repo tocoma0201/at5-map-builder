@@ -12,6 +12,7 @@ from configure_imc_keyhole_sap import configure_keyhole_sap
 from configure_imc_raster_sap import configure_sap, find_raster_template
 
 
+# 日本語: 既存の成果物と重ならない連番の作業名を決める。
 def next_run_number(output_dir, resolution_label):
     number = 1
     while True:
@@ -24,6 +25,7 @@ def next_run_number(output_dir, resolution_label):
         number += 1
 
 
+# 日本語: 外部コマンドを表示して実行し、失敗時は処理を中断する。
 def run(command, *, cwd=None):
     print("+", subprocess.list2cmdline([str(part) for part in command]), flush=True)
     result = subprocess.run(command, cwd=cwd)
@@ -32,6 +34,7 @@ def run(command, *, cwd=None):
     return result
 
 
+# 日本語: IMCをバッチモードで起動し、ログから完了を確認する。
 def run_imc(imc_exe, sap_path, log_path):
     try:
         result = subprocess.run(
@@ -52,6 +55,7 @@ def run_imc(imc_exe, sap_path, log_path):
     return log_text
 
 
+# 日本語: IMCログの末尾をエラー調査用に表示する。
 def log_tail(path, lines=50):
     if not path.is_file():
         print(f"IMCログがありません: {path}", file=sys.stderr)
@@ -60,6 +64,7 @@ def log_tail(path, lines=50):
     print("\n".join(text[-lines:]), file=sys.stderr)
 
 
+# 日本語: PGWが未回転の6行形式で出力されたことを確認する。
 def validate_pgw(path):
     values = [float(line.strip()) for line in path.read_text(encoding="ascii").splitlines()]
     if len(values) != 6 or not all(map(lambda value: abs(value) < float("inf"), values)):
@@ -68,6 +73,7 @@ def validate_pgw(path):
         raise ValueError(f"未回転PGWではありません: {path}")
 
 
+# 日本語: KMLをKeyhole Modeで処理し、各画像に対応するPGWを生成する。
 def make_keyhole_pgws(imc_exe, template_sap, source_folder, output_dir, run_tag, chunks):
     kml_path = source_folder / "map_overlays.kml"
     keyhole_sap = output_dir / f"keyhole-highres-{run_tag}.sap"
@@ -95,6 +101,7 @@ def make_keyhole_pgws(imc_exe, template_sap, source_folder, output_dir, run_tag,
     print(f"Keyhole ModeでPGW {len(pgw_paths)}枚を生成しました")
 
 
+# 日本語: 画像取得からIMC変換、AT5検証、指定先へのコピーまでを制御する。
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bbox", nargs=4, type=float,

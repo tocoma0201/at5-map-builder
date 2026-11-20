@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-"""Local browser UI for selecting a raster map bbox and running the AT5 builder.
+"""範囲を選び、AT5地図の作成を実行するローカルブラウザー画面。
 
-Uses only the Python standard library. The background map loads GSI tiles in the
-user's browser; a network connection is needed to see the background.
+Python標準ライブラリーで動作し、背景地図の表示にはブラウザーの通信を使う。
 """
 from __future__ import annotations
 
@@ -25,6 +24,8 @@ STATE_DIR = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "AT5MapBuil
 STATE_FILE = STATE_DIR / "range-ui-state.json"
 DEFAULT_COPY_TO = ""
 DEFAULT_IMC_EXE = os.environ.get("AT5_IMC_EXE", "")
+# 日本語: 画面表示の版番号をVERSIONファイルで一元管理する。
+TOOL_VERSION = (ROOT / "VERSION").read_text(encoding="ascii").strip()
 
 HTML = r"""<!doctype html>
 <html lang="ja">
@@ -35,7 +36,7 @@ HTML = r"""<!doctype html>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 *{box-sizing:border-box} body{margin:0;font:15px system-ui,sans-serif;color:#18212b}
-header{padding:10px 16px;background:#173c58;color:white} h1{font-size:19px;margin:0}
+header{padding:10px 16px;background:#173c58;color:white;display:flex;justify-content:space-between;align-items:center} h1{font-size:19px;margin:0} .version{font-size:13px;color:#d8e7f1}
 main{display:grid;grid-template-columns:minmax(330px,390px) 1fr;min-height:calc(100vh - 48px)}
 aside{padding:14px;border-right:1px solid #ccd4da;overflow:auto}
 #map{height:calc(100vh - 48px);min-height:520px}
@@ -54,7 +55,7 @@ dialog{border:1px solid #aab6bf;border-radius:8px;width:min(480px,calc(100vw - 3
 </style>
 </head>
 <body>
-<header><h1>Lowrance魚群探知機用 AT5日本地図作成ツール</h1></header>
+<header><h1>Lowrance魚群探知機用 AT5日本地図作成ツール</h1><span class="version">v__TOOL_VERSION__</span></header>
 <main>
 <aside>
 <p class="note">地図は通常ドラッグで移動できます。「範囲選択」をONにした間だけドラッグで範囲を囲めます。座標は「南 西 北 東」の順で入力します。最後に使った範囲は次回も保持されます。</p>
@@ -88,6 +89,7 @@ dialog{border:1px solid #aab6bf;border-radius:8px;width:min(480px,calc(100vw - 3
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+// 範囲入力と地図描画の連携を行うクライアント側処理。
 const pythonExecutable = __PYTHON_EXECUTABLE_JSON__;
 const toolRoot = __TOOL_ROOT_JSON__;
 const commandBox = document.getElementById('command');
@@ -108,7 +110,9 @@ imcPath.addEventListener('paste',e=>{
  if(clean!==pasted){e.preventDefault();const start=imcPath.selectionStart,end=imcPath.selectionEnd;imcPath.setRangeText(clean,start,end,'end');imcPath.dispatchEvent(new Event('input',{bubbles:true}))}
 });
 
+// 緯度経度の順序と大小関係を画面側で先に確認する。
 function valid(a){return a.length===4&&a.every(Number.isFinite)&&a[0]<a[2]&&a[1]<a[3]&&a[0]>=-90&&a[2]<=90&&a[1]>=-180&&a[3]<=180}
+// 座標欄、赤い矩形、概算値、コマンドを同じ範囲に揃える。
 function setBox(a,save=true,fitMap=false){
  if(!valid(a)){status('範囲の数値が不正です。南 西 北 東の順に入力してください。');return}
  bbox=a.map(Number); box.value=bbox.map(x=>x.toFixed(6)).join(', ');
@@ -122,6 +126,7 @@ function parseBox(s){const parts=s.trim().split(/[\s,，]+/).filter(Boolean);if(
 function status(s){document.getElementById('status').textContent=s}
 function outputTag(a){return a.map(x=>(x<0?'m':'p')+String(Math.round(Math.abs(x)*1000000)).padStart(9,'0')).join('-')}
 function areaKm2(a){const r=6371,rad=Math.PI/180;return r*r*(a[3]-a[1])*rad*(Math.sin(a[2]*rad)-Math.sin(a[0]*rad))}
+// 試験済み範囲の実測値を基準に、面積比で容量を概算する。
 function updateEstimate(){
  if(!bbox)return;
  const reference=areaKm2([35.140,139.130,35.330,139.590]);
@@ -129,6 +134,7 @@ function updateEstimate(){
  const el=document.getElementById('estimate');el.className='note '+(mb<=1000?'good':'warning');
  el.textContent=`範囲面積 約${Math.round(areaKm2(bbox))} km² / AT5概算 約${mib} MiB（${mb} MB）。目安は1,000 MB以内。地図の内容や分割で実サイズは変わります。`;
 }
+// 現在の入力値からPowerShellコマンド欄を再生成する。
 function updateCommand(){
  const a=parseBox(box.value),dest=copyTo.value.trim(),name=mapName.value.trim();
  if(!valid(a)||!dest||!imcExePath||!imcTemplatePath){commandBox.value='';return}
@@ -145,6 +151,7 @@ function updateCommand(){
 async function persist(){
  try{await fetch('/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bbox,copyTo:copyTo.value.trim(),at5Prefix:mapName.value.trim(),imcExe:imcExePath,templateSap:imcTemplatePath})})}catch(e){}
 }
+// Enter確定時に入力範囲を地図へ反映する。Shift+Enterは改行。
 box.addEventListener('keydown',e=>{
  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();setBox(parseBox(box.value))}
 });
@@ -178,9 +185,11 @@ document.getElementById('saveImc').onclick=async()=>{
  finally{button.disabled=false}
 };
 document.getElementById('selectMode').onclick=e=>{selectMode=!selectMode;e.currentTarget.textContent=selectMode?'範囲選択: ON（ドラッグで範囲指定）':'範囲選択: OFF（ドラッグで地図移動）';e.currentTarget.classList.toggle('primary',selectMode);map.dragging[selectMode?'disable':'enable']()};
+// 範囲選択中だけ、地図ドラッグを矩形指定として扱う。
 map.on('mousedown',e=>{if(!selectMode||e.originalEvent.button!==0)return;dragStart=e.latlng;if(rect)map.removeLayer(rect);rect=L.rectangle([dragStart,dragStart],{color:'#d23636',weight:2,fillOpacity:.10}).addTo(map)});
 map.on('mousemove',e=>{if(dragStart&&rect)rect.setBounds(L.latLngBounds(dragStart,e.latlng))});
 document.addEventListener('mouseup',e=>{if(!dragStart)return;const end=map.mouseEventToLatLng(e);const bounds=L.latLngBounds(dragStart,end),sw=bounds.getSouthWest(),ne=bounds.getNorthEast();dragStart=null;if(sw.lat===ne.lat||sw.lng===ne.lng)return;setBox([sw.lat,sw.lng,ne.lat,ne.lng])});
+// 必須項目を確認してから、ローカルサーバー経由でPowerShellを起動する。
 document.getElementById('runPowerShell').onclick=async()=>{
  if(running)return;
  const a=parseBox(box.value),dest=copyTo.value.trim(),name=mapName.value.trim(),imc=imcExePath,command=commandBox.value.trim();
@@ -202,13 +211,16 @@ async function poll(){
 </html>
 """
 
+# 日本語: UIとビルドの状態をまとめて管理する。
 class AppState:
+    # 日本語: 実行状態、ログ、排他制御用ロックを初期化する。
     def __init__(self):
         self.lock = threading.Lock()
         self.running = False
         self.log = ""
         self.result = ""
 
+    # 日本語: 前回の入力値を設定ファイルから読み込み、未設定項目は既定値で補う。
     def read_saved(self):
         try:
             data = json.loads(STATE_FILE.read_text(encoding="utf-8"))
@@ -224,6 +236,7 @@ class AppState:
         except (OSError, ValueError, TypeError):
             return {"bbox": DEFAULT_BBOX, "copyTo": DEFAULT_COPY_TO, "at5Prefix": "", "imcExe": DEFAULT_IMC_EXE, "templateSap": ""}
 
+    # 日本語: 範囲や出力先、IMCの場所を検証してユーザー設定へ保存する。
     def save(self, data):
         bbox = validate_bbox(data.get("bbox"))
         copy_to = str(data.get("copyTo", DEFAULT_COPY_TO)).strip()
@@ -237,6 +250,7 @@ class AppState:
         STATE_FILE.write_text(json.dumps(saved, ensure_ascii=False, indent=2), encoding="utf-8")
         return saved
 
+    # 日本語: IMC実行ファイルを確認し、Raster Mode設定を検出して保存する。
     def set_imc(self, data):
         raw_path = str(data.get("imcExe", "")).strip().strip('"')
         if not raw_path:
@@ -252,6 +266,7 @@ class AppState:
         result["imcConfigured"] = True
         return result
 
+    # 日本語: ブラウザーから受け取った設定を確認し、ビルドをバックグラウンドで開始する。
     def start_build(self, data):
         with self.lock:
             if self.running:
@@ -278,6 +293,7 @@ class AppState:
             self.log = ""
             self.result = "Buildを実行中です"
 
+        # 日本語: 変換スクリプトを実行し、進行ログと終了結果を状態へ反映する。
         def worker():
             command = [
                 sys.executable, str(BUILDER),
@@ -317,6 +333,7 @@ class AppState:
 
         threading.Thread(target=worker, daemon=True).start()
 
+    # 日本語: 編集済みのPowerShellコマンドを別ウィンドウで実行する。
     def launch_powershell(self, data):
         if os.name != "nt":
             raise RuntimeError("PowerShell実行ボタンはWindows上で起動した場合に使えます")
@@ -352,6 +369,7 @@ class AppState:
             self.running = True
             self.log = ""
             self.result = "別ウィンドウのPowerShellで実行中です"
+        # 日本語: PowerShellの終了を待ち、実行状態を解除する。
         def wait_for_powershell():
             code = proc.wait()
             with self.lock:
@@ -361,10 +379,12 @@ class AppState:
 
 state = AppState()
 
+# 日本語: 座標から再現可能な作業フォルダー名を作る。
 def output_dir_for_bbox(bbox):
     tag = "-".join(("m" if value < 0 else "p") + f"{round(abs(value) * 1_000_000):09d}" for value in bbox)
     return f"map-ui-{tag}"
 
+# 日本語: 南・西・北・東の順と緯度経度の範囲を検証する。
 def validate_bbox(value):
     if not isinstance(value, list) or len(value) != 4:
         raise ValueError("bboxは南・西・北・東の4数値で指定してください")
@@ -377,6 +397,7 @@ def validate_bbox(value):
         raise ValueError("bboxの範囲または南西北東の順を確認してください")
     return bbox
 
+# 日本語: Windowsのフォルダー選択画面でAT5の保存先を選ぶ。
 def select_output_directory(data):
     if os.name != "nt":
         raise RuntimeError("フォルダー選択画面はWindows上で利用できます")
@@ -402,6 +423,7 @@ def select_output_directory(data):
     return {"path": selected} if selected else {"cancelled": True}
 
 
+# 日本語: Windowsのファイル選択画面でInsightMapCreator.exeを選ぶ。
 def select_imc_executable(data):
     if os.name != "nt":
         raise RuntimeError("ファイル選択画面はWindows上で利用できます")
@@ -430,6 +452,7 @@ def select_imc_executable(data):
     return {"path": selected} if selected else {"cancelled": True}
 
 
+# 日本語: AT5名に使う先頭文字を許可文字と長さで検証する。
 def validate_at5_prefix(value):
     prefix = str(value or "").strip()
     if prefix and not all(char.isascii() and (char.isalnum() or char == "-") for char in prefix):
@@ -438,11 +461,13 @@ def validate_at5_prefix(value):
         raise ValueError("AT5名の先頭文字は32文字以内で指定してください")
     return prefix
 
+# 日本語: ローカルブラウザー画面からのHTTP要求を処理する。
 class Handler(BaseHTTPRequestHandler):
+    # 日本語: 画面、保存設定、実行状況のGET要求を返す。
     def do_GET(self):
         path = urlparse(self.path).path
         if path == "/":
-            body = HTML.replace("__PYTHON_EXECUTABLE_JSON__", json.dumps(sys.executable)).replace("__TOOL_ROOT_JSON__", json.dumps(str(ROOT))).encode("utf-8")
+            body = HTML.replace("__PYTHON_EXECUTABLE_JSON__", json.dumps(sys.executable)).replace("__TOOL_ROOT_JSON__", json.dumps(str(ROOT))).replace("__TOOL_VERSION__", TOOL_VERSION).encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
@@ -457,6 +482,7 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self.send_error(404)
 
+    # 日本語: 設定保存、パス選択、変換起動のPOST要求を振り分ける。
     def do_POST(self):
         path = urlparse(self.path).path
         try:
@@ -481,6 +507,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as exc:
             self.send_json(400, {"error": str(exc)})
 
+    # 日本語: JSONデータをHTTPレスポンスとして返す。
     def send_json(self, status, data):
         body = json.dumps(data, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
@@ -489,9 +516,11 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    # 日本語: 標準HTTPサーバーのアクセスログ出力を抑制する。
     def log_message(self, fmt, *args):
         pass
 
+# 日本語: ローカル専用Webサーバーを起動し、ブラウザーで画面を開く。
 def main():
     if sys.version_info < (3, 9):
         raise SystemExit("Python 3.9 or later is required.")

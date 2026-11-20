@@ -15,6 +15,7 @@ TILE_SIZE = 256
 BASE_URL = "https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png"
 
 
+# 日本語: Web Mercatorの経緯度をワールドピクセル座標へ変換する。
 def world_pixel(lon, lat, zoom):
     lat = max(-85.05112878, min(85.05112878, lat))
     n = TILE_SIZE * (2 ** zoom)
@@ -24,6 +25,7 @@ def world_pixel(lon, lat, zoom):
     return x, y
 
 
+# 日本語: ワールドピクセル座標をWeb Mercatorの経緯度へ戻す。
 def inverse_world_pixel(x, y, zoom):
     n = TILE_SIZE * (2 ** zoom)
     lon = 360.0 * x / n - 180.0
@@ -31,6 +33,7 @@ def inverse_world_pixel(x, y, zoom):
     return lon, lat
 
 
+# 日本語: bboxとズームから必要なXYZタイルと画像切り出し範囲を計算する。
 def make_plan(bbox, zoom):
     south, west, north, east = bbox
     if not (-85 < south < north < 85 and -180 < west < east < 180):
@@ -57,6 +60,7 @@ def make_plan(bbox, zoom):
     }
 
 
+# 日本語: 地理院タイルをキャッシュから再利用するか、通信して取得する。
 def fetch_tile(z, x, y, cache_dir, refresh=False):
     from PIL import Image  # Pillowはダウンロード処理実行時だけ必要
 

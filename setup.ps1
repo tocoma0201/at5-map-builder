@@ -1,6 +1,8 @@
 $ErrorActionPreference = "Stop"
+# 日本語: スクリプトのある場所を基準に依存ライブラリーを設定する。
 Set-Location -LiteralPath $PSScriptRoot
 
+# 日本語: py、python、python3のいずれかからPython 3.9以上を見つける。
 function Find-PythonExecutable {
     $launchers = @()
     if (Get-Command py -ErrorAction SilentlyContinue) {
@@ -37,6 +39,7 @@ function Find-PythonExecutable {
 }
 
 $pythonExe = Find-PythonExecutable
+# 日本語: 検出したPythonでrequirements.txtのライブラリーをインストールする。
 if (-not $pythonExe) {
     Write-Host "Python 3.9 or later was not found." -ForegroundColor Yellow
     Write-Host "Run Install_Python.bat, or install Python for Windows using your preferred method."

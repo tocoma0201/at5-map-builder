@@ -8,6 +8,7 @@ from pathlib import Path
 import sys
 
 
+# 日本語: バイト数を見やすい単位の文字列へ変換する。
 def size_text(value):
     if value < 1024:
         return f"{value} B"
@@ -16,6 +17,7 @@ def size_text(value):
     return f"{value / 1024 ** 2:.2f} MiB"
 
 
+# 日本語: IMC作業フォルダーのファイル一覧とAT5の容量を表示する。
 def main():
     parser = argparse.ArgumentParser(description="Insight Map Creator出力を一覧・容量確認")
     parser.add_argument("--work-dir", type=Path, default=Path("builds/imc-work"),
