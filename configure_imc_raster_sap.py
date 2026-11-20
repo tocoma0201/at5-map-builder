@@ -175,6 +175,142 @@ def normalize_imc_path(path, directory=False):
     return value
 
 
+def encode_varint_field(number, value):
+    return encode_varint((number << 3) | 0) + encode_varint(value)
+
+
+def encode_fixed32_field(number, value):
+    return encode_varint((number << 3) | 5) + struct.pack("<f", float(value))
+
+
+def _legacy_value(fields, number, wire, required=True):
+    matches = [field for field in fields if field[0] == number and field[1] == wire]
+    if len(matches) > 1 or (required and not matches):
+        raise ValueError(f"旧形式SAP: field {number} を一つに特定できません")
+    return matches[0][2] if matches else None
+
+
+def _legacy_varint(fields, number, default=None):
+    raw = _legacy_value(fields, number, 0, required=default is None)
+    if raw is None:
+        return default
+    value, end = read_varint(raw, 0)
+    if end != len(raw):
+        raise ValueError(f"旧形式SAP: field {number} のvarintが不正です")
+    return value
+
+
+def _legacy_strings(payload):
+    """GPBfの繰り返しMCString列をUTF-8/Windows-1252で読む。"""
+    values = []
+    pos = 0
+    while pos < len(payload):
+        length, pos = read_varint(payload, pos)
+        end = pos + length
+        if end > len(payload):
+            raise ValueError("旧形式SAP: MCStringの長さが不正です")
+        raw = payload[pos:end]
+        pos = end
+        try:
+            values.append(raw.decode("utf-8"))
+        except UnicodeDecodeError:
+            values.append(raw.decode("cp1252"))
+    return values
+
+
+def _legacy_text(payload, label):
+    try:
+        return payload.decode("utf-8")
+    except UnicodeDecodeError:
+        try:
+            return payload.decode("cp1252")
+        except UnicodeDecodeError as exc:
+            raise ValueError(f"旧形式SAP: {label}の文字コードを読めません") from exc
+
+
+def upgrade_legacy_raster_sap(raw):
+    """IMC 0.6.5.xのGPBf Raster SAPを0.7.4.xのGPB2へ変換する。"""
+    if not raw.startswith(b"GPBf"):
+        return raw
+    declared_length, body_start = read_varint(raw, 4)
+    body = raw[body_start:]
+    if declared_length != len(body):
+        raise ValueError("旧形式SAP: 宣言されたデータ長と実際の長さが一致しません")
+    fields = parse_fields(body)
+    mode = _legacy_varint(fields, 1)
+    if mode != 1:
+        raise ValueError("旧形式SAPはRaster Modeではありません")
+
+    source_list_raw = _legacy_value(fields, 3, 2, required=False)
+    sources = _legacy_strings(source_list_raw) if source_list_raw is not None else []
+    source = sources[0] if sources else ""
+    work = _legacy_text(_legacy_value(fields, 7, 2), "Work Directory")
+    raster_filter = _legacy_text(_legacy_value(fields, 8, 2), "Raster Filter")
+    min_raw = _legacy_value(fields, 5, 5)
+    max_raw = _legacy_value(fields, 6, 5)
+    # GPBf stored these two float fields in big-endian order due to an IMC bug.
+    minimum = struct.unpack(">f", min_raw)[0]
+    maximum = struct.unpack(">f", max_raw)[0]
+
+    atlas_version = _legacy_varint(fields, 13, 12)
+    if atlas_version == 0:
+        atlas_version = 12
+    elif atlas_version == 1:
+        atlas_version = 10
+    if atlas_version not in (6, 7, 10, 12, 13):
+        atlas_version = 12
+    restricted_use = _legacy_varint(fields, 11, 0)
+    restricted_store = _legacy_varint(fields, 12, 0)
+    restriction = 2 if restricted_store else (1 if restricted_use else 0)
+    project_naming = _legacy_varint(fields, 14, 0)
+    map_wrapper = _legacy_varint(fields, 15, 0)
+    mercator = _legacy_varint(fields, 16, 0)
+    image_boundary = _legacy_varint(fields, 17, 0)
+    cache = _legacy_varint(fields, 18, 0)
+    imagery = _legacy_varint(fields, 19, 3)
+    description_raw = _legacy_value(fields, 20, 2, required=False)
+    description = description_raw or b""
+
+    raster = (
+        encode_length_field(1, source.encode("cp1252", errors="replace"))
+        + encode_length_field(2, work.encode("cp1252", errors="replace"))
+        + encode_fixed32_field(3, minimum)
+        + encode_fixed32_field(4, maximum)
+    )
+    atlas = (
+        encode_varint_field(1, atlas_version)
+        + encode_varint_field(2, restriction)
+        + encode_length_field(3, description)
+        + encode_varint_field(4, project_naming)
+        + encode_varint_field(5, map_wrapper)
+    )
+    raster_options = (
+        encode_length_field(2, raster_filter.encode("cp1252", errors="replace"))
+        + encode_varint_field(3, cache)
+        + encode_varint_field(4, imagery)
+        + encode_varint_field(5, mercator)
+        + encode_varint_field(6, 0)
+    )
+    converted = (
+        encode_varint_field(1, 1)
+        + encode_length_field(3, raster)
+        + encode_length_field(7, atlas)
+        + encode_length_field(9, raster_options)
+        + encode_varint_field(17, image_boundary)
+    )
+    return MAGIC + encode_varint(len(converted)) + converted
+
+
+def _cache_template(raw, identity, filename):
+    digest = hashlib.sha256(identity.encode("utf-8") + b"\0" + raw).hexdigest()[:16]
+    cache_root = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "AT5MapBuilder" / "imc-template-cache"
+    cached = cache_root / f"{Path(filename).stem}-{digest}.sap"
+    if not cached.is_file():
+        cache_root.mkdir(parents=True, exist_ok=True)
+        cached.write_bytes(raw)
+    return cached
+
+
 def _is_raster_template_bytes(raw):
     """バイト列がIMC Raster Mode設定か確認する。"""
     try:
@@ -232,8 +368,15 @@ def find_raster_template(imc_exe):
         except OSError:
             continue
     for path in sorted(candidates, key=lambda item: (item.name.lower(), str(item).lower())):
-        if is_raster_template(path):
-            return path
+        try:
+            raw = path.read_bytes()
+            normalized = upgrade_legacy_raster_sap(raw)
+            if _is_raster_template_bytes(normalized):
+                if normalized == raw:
+                    return path
+                return _cache_template(normalized, str(path.resolve()), path.name)
+        except (OSError, ValueError, IndexError, struct.error):
+            continue
 
     sample_archives = []
     for base in bases:
@@ -270,22 +413,28 @@ def find_raster_template(imc_exe):
                     )
                 for info in members:
                     raw = bundle.read(info)
-                    valid = _is_raster_template_bytes(raw)
+                    normalized = upgrade_legacy_raster_sap(raw)
+                    valid = _is_raster_template_bytes(normalized)
+                    conversion = "、GPBfからGPB2へ変換" if normalized != raw else ""
                     archive_details.append(
                         f"{archive.name}!{info.filename}: "
-                        f"signature={raw[:4]!r}, Raster Mode判定={'OK' if valid else 'NG'}"
+                        f"signature={raw[:4]!r}, Raster Mode判定={'OK' if valid else 'NG'}{conversion}"
                     )
                     if not valid:
                         continue
-                    digest = hashlib.sha256(
-                        str(archive.resolve()).encode("utf-8") + b"\\0"
-                        + info.filename.encode("utf-8") + b"\\0" + raw
-                    ).hexdigest()[:16]
-                    cached = cache_root / f"{archive.stem}-{digest}-{Path(info.filename).name}"
-                    if not cached.is_file():
-                        cache_root.mkdir(parents=True, exist_ok=True)
-                        cached.write_bytes(raw)
-                    return cached
+                    if normalized == raw:
+                        digest = hashlib.sha256(
+                            str(archive.resolve()).encode("utf-8") + b"\\0"
+                            + info.filename.encode("utf-8") + b"\\0" + raw
+                        ).hexdigest()[:16]
+                        cached = cache_root / f"{archive.stem}-{digest}-{Path(info.filename).name}"
+                        if not cached.is_file():
+                            cache_root.mkdir(parents=True, exist_ok=True)
+                            cached.write_bytes(normalized)
+                        return cached
+                    return _cache_template(
+                        normalized, f"{archive.resolve()}!{info.filename}", Path(info.filename).name
+                    )
         except NotImplementedError as exc:
             archive_details.append(
                 f"{archive.name}: ZIP圧縮方式をPython標準機能で読めません ({exc})。"
