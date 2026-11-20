@@ -4,9 +4,11 @@
 SAPの未知フィールドは保持し、Raster modeのWork DirectoryとRaster Filter Shapefileだけを更新する。
 """
 import argparse
+import hashlib
 import os
 import struct
 import sys
+import zipfile
 from pathlib import Path
 
 
@@ -152,10 +154,9 @@ def normalize_imc_path(path, directory=False):
     return value
 
 
-def is_raster_template(path):
-    """判別可能なIMC Raster Mode設定か確認する。"""
+def _is_raster_template_bytes(raw):
+    """バイト列がIMC Raster Mode設定か確認する。"""
     try:
-        raw = Path(path).read_bytes()
         if not raw.startswith(MAGIC):
             return False
         declared_length, body_start = read_varint(raw, len(MAGIC))
@@ -179,21 +180,28 @@ def is_raster_template(path):
         one_field(options_fields, 2, 2, "Raster Filter Shapefile")
         one_field(options_fields, 6, 0, "Raster Filter Alpha")
         return True
-    except (OSError, ValueError, IndexError):
+    except (ValueError, IndexError):
+        return False
+
+
+def is_raster_template(path):
+    """ファイルが判別可能なIMC Raster Mode設定か確認する。"""
+    try:
+        return _is_raster_template_bytes(Path(path).read_bytes())
+    except OSError:
         return False
 
 
 def find_raster_template(imc_exe):
-    """IMC配布物のサンプル設定からRaster Mode用を自動検出する。"""
+    """IMC配布物のサンプルからRaster Mode設定を探す。ZIPは展開せずに読み取る。"""
     exe_dir = Path(imc_exe).resolve().parent
+    bases = (exe_dir, *list(exe_dir.parents)[:2])
     roots = []
-    for base in (exe_dir, *list(exe_dir.parents)[:2]):
-        roots.extend((
-            base / "IMC_Sample" / "Raster",
-            base / "IMC_Sample",
-        ))
-    seen = set()
+    for base in bases:
+        roots.extend((base / "IMC_Sample" / "Raster", base / "IMC_Sample"))
+
     candidates = []
+    seen = set()
     for root in roots:
         if not root.is_dir():
             continue
@@ -208,9 +216,48 @@ def find_raster_template(imc_exe):
     for path in sorted(candidates, key=lambda item: (item.name.lower(), str(item).lower())):
         if is_raster_template(path):
             return path
+
+    sample_archives = []
+    for base in bases:
+        if not base.is_dir():
+            continue
+        try:
+            sample_archives.extend(
+                path for path in base.iterdir()
+                if path.is_file() and "sample" in path.name.casefold()
+                and path.suffix.casefold() == ".zip"
+            )
+        except OSError:
+            continue
+
+    cache_root = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "AT5MapBuilder" / "imc-template-cache"
+    for archive in sorted(set(sample_archives), key=lambda item: item.name.casefold()):
+        try:
+            with zipfile.ZipFile(archive) as bundle:
+                members = sorted(
+                    (info for info in bundle.infolist()
+                     if not info.is_dir() and info.filename.casefold().endswith(".sap")),
+                    key=lambda info: info.filename.casefold(),
+                )
+                for info in members:
+                    raw = bundle.read(info)
+                    if not _is_raster_template_bytes(raw):
+                        continue
+                    digest = hashlib.sha256(
+                        str(archive.resolve()).encode("utf-8") + b"\0"
+                        + info.filename.encode("utf-8") + b"\0" + raw
+                    ).hexdigest()[:16]
+                    cached = cache_root / f"{archive.stem}-{digest}-{Path(info.filename).name}"
+                    if not cached.is_file():
+                        cache_root.mkdir(parents=True, exist_ok=True)
+                        cached.write_bytes(raw)
+                    return cached
+        except (OSError, zipfile.BadZipFile, RuntimeError):
+            continue
+
     raise FileNotFoundError(
-        "IMCフォルダー内に利用可能なRaster Mode設定が見つかりません。"
-        "mapcreator.zip内のIMC_0_7_4_0_Sample.zipを展開し、IMC_SampleフォルダーをIMC_Application_x64の隣に置いてください。"
+        "Raster Mode設定が見つかりません。mapcreator.zipを展開したフォルダーに"
+        "IMC_0_7_4_0_Sample.zipが残っているか確認してください。Sample ZIPの追加展開は不要です。"
     )
 
 
