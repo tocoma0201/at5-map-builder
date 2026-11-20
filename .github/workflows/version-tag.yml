@@ -1,0 +1,51 @@
+name: VERSIONからリリースタグを作成
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - VERSION
+
+permissions: {}
+
+jobs:
+  create-version-tag:
+    name: バージョンを検証してタグを作成
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: リポジトリを取得
+        uses: actions/checkout@v4
+
+      - name: VERSIONを検証してタグを作成
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          version="$(tr -d '\r\n' < VERSION)"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::VERSIONには 例: 0.1.0 の形式でバージョンを記載してください。"
+            exit 1
+          fi
+
+          tag="v$version"
+          if existing_ref="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" 2>/dev/null)"; then
+            existing_sha="$(printf '%s' "$existing_ref" | gh api --input - --jq '.object.sha')"
+            if [[ "$existing_sha" == "$GITHUB_SHA" ]]; then
+              echo "タグ $tag はこのコミットに既に設定されています。"
+              exit 0
+            fi
+            echo "::error::タグ $tag は別のコミットに既に存在します。VERSIONを別の値にしてください。"
+            exit 1
+          fi
+
+          gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+            -f "ref=refs/tags/$tag" \
+            -f "sha=$GITHUB_SHA"
+          echo "タグ $tag を作成しました。"
