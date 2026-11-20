@@ -62,13 +62,13 @@ textarea{height:62px;resize:vertical} button{cursor:pointer;background:#eef4f7}
 <div id="estimate" class="note"></div>
 <label for="mapName">Ti2で選ぶ地図名／AT5先頭文字（任意）</label>
 <input id="mapName" placeholder="例: Map01" maxlength="32">
-<label for="copyTo">出力先パス（SDカードのドライブパス指定も可能）</label>
-<input id="copyTo" placeholder="PCまたはSDカードの出力先フォルダー">
+<label for="copyTo">PCまたはSDカードの出力先フォルダー（SDカードの例：F:\ShadedRelief）</label>
+<input id="copyTo" placeholder="例: F:\ShadedRelief">
 <label for="imcExe">Insight Map Creator の実行ファイル</label>
 <input id="imcExe" placeholder="InsightMapCreator.exe のフルパス">
 <label for="templateSap">Raster Mode SAPテンプレート</label>
 <input id="templateSap" placeholder="IMCで保存したRaster Mode用 .sap のフルパス">
-<p class="note">出力先はPC内の任意フォルダーまたはSDカード上のフォルダーを指定できます。Windows専用ツールです。</p>
+<p class="note">SDカードに保存する場合は、カード直下の ShadedRelief フォルダーを指定してください。PCに保存する場合は任意のフォルダーを指定できます。Windows専用ツールです。</p>
 <p class="note">生成条件：Min 1〜Max 8192 / Filter Alpha 0。容量の1,000 MBは推奨目安で、超えても警告のみで作成を続けます。タイル数が目安1,000枚を超えた場合も警告のみです。名前を入力すると、AT5ファイル名の先頭に付けると同時にAtlas Descriptionを「M=名前」に設定します。Ti2で地図を選ぶ際の識別名として使います。別の地図セットとは異なる名前にしてください。AT5容量は過去の試験結果を面積比で換算した概算です。</p>
 <div class="actions"><button id="save">範囲を保存</button><button id="build" class="primary">AT5を作成して出力先へ保存</button></div>
 <label>PowerShellコマンド</label><textarea id="command" readonly></textarea>
