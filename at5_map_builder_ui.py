@@ -77,9 +77,10 @@ dialog{border:1px solid #aab6bf;border-radius:8px;width:min(480px,calc(100vw - 3
 </dialog>
 
 
-<p class="note">生成条件：Min 1〜Max 8192 / Filter Alpha 0。容量の1,000 MBは推奨目安で、超えても警告のみで作成を続けます。タイル数が目安1,000枚を超えた場合も警告のみです。名前を入力すると、AT5ファイル名の先頭に付けると同時にAtlas Descriptionを「M=名前」に設定します。Ti2で地図を選ぶ際の識別名として使います。別の地図セットとは異なる名前にしてください。AT5容量は過去の試験結果を面積比で換算した概算です。</p>
-<div class="actions"><button id="save">範囲を保存</button><button id="build" class="primary">AT5を作成して出力先へ保存</button></div>
-<button id="runPowerShell">PowerShellで実行</button>
+<p class="note">生成条件：Min 1〜Max 8192 / Filter Alpha 0。容量1,000 MB・タイル数1,000枚は目安です。超えても警告のみで作成を続けます。名前を入力すると、AT5ファイル名の先頭とTi2のChart sourceに使われます。</p>
+<label for="command">PowerShellコマンド（編集できます）</label>
+<textarea id="command" rows="4" spellcheck="false"></textarea>
+<button id="runPowerShell" class="primary">PowerShellで実行</button>
 <div id="status">起動しています…</div>
 <p class="note">本ツールはWindows専用です。実行状況と詳細はPowerShellで確認できます。</p>
 </aside>
@@ -88,6 +89,8 @@ dialog{border:1px solid #aab6bf;border-radius:8px;width:min(480px,calc(100vw - 3
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const pythonExecutable = __PYTHON_EXECUTABLE_JSON__;
+const toolRoot = __TOOL_ROOT_JSON__;
+const commandBox = document.getElementById('command');
 const map=L.map('map').setView([35.24,139.36],10);
 L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',{
  maxZoom:18, attribution:'地理院タイル（標準地図） | 国土地理院'
@@ -125,13 +128,24 @@ function updateEstimate(){
  const el=document.getElementById('estimate');el.className='note '+(mb<=1000?'good':'warning');
  el.textContent=`範囲面積 約${Math.round(areaKm2(bbox))} km² / AT5概算 約${mib} MiB（${mb} MB）。目安は1,000 MB以内。地図の内容や分割で実サイズは変わります。`;
 }
-function updateCommand(){}
+function updateCommand(){
+ const a=parseBox(box.value),dest=copyTo.value.trim(),name=mapName.value.trim();
+ if(!valid(a)||!dest||!imcExePath||!imcTemplatePath){commandBox.value='';return}
+ const q=v=>"'"+String(v).replace(/'/g,"''")+"'";
+ const args=[pythonExecutable,toolRoot.replace(/\\/g,'/')+'/build_at5_map.py',
+  '--bbox',...a.map(v=>String(Number(v).toFixed(6))),
+  '--imc-exe',imcExePath,'--template-sap',imcTemplatePath,
+  '--output-dir','map-ui-'+outputTag(a),
+  '--min-resolution','1','--max-resolution','8192','--filter-alpha','0','--copy-to',dest];
+ if(name)args.push('--at5-prefix',name);
+ commandBox.value="Set-Location -LiteralPath "+q(toolRoot)+"; & "+args.map(q).join(' ')+
+  "; if ($LASTEXITCODE -ne 0) { Write-Host ('Build failed: ' + $LASTEXITCODE) -ForegroundColor Red }";
+}
 async function persist(){
  try{await fetch('/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bbox,copyTo:copyTo.value.trim(),at5Prefix:mapName.value.trim(),imcExe:imcExePath,templateSap:imcTemplatePath})})}catch(e){}
 }
 document.getElementById('apply').onclick=()=>setBox(parseBox(box.value));
 document.getElementById('useMap').onclick=()=>{const b=map.getBounds();setBox([b.getSouth(),b.getWest(),b.getNorth(),b.getEast()])};
-document.getElementById('save').onclick=async()=>{await persist();status('範囲と出力先を保存しました。次回起動時に復元します。')};
 copyTo.onchange=()=>{updateCommand();persist()};
 mapName.oninput=()=>{updateCommand();persist()};
 document.getElementById('imcSettings').onclick=()=>{imcPath.value=imcExePath;imcPathError.textContent='';imcDialog.showModal()};
@@ -143,7 +157,7 @@ document.getElementById('saveImc').onclick=async()=>{
  try{
   const r=await fetch('/imc-settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({imcExe:path})});
   const j=await r.json();if(!r.ok)throw Error(j.error||'IMCを設定できません');
-  imcExePath=j.imcExe;imcTemplatePath=j.templateSap||'';imcStatus.textContent='IMC設定済み';imcDialog.close();await persist();status('IMCの場所を保存しました。');
+  imcExePath=j.imcExe;imcTemplatePath=j.templateSap||'';imcStatus.textContent='IMC設定済み';imcDialog.close();await persist();updateCommand();status('IMCの場所を保存しました。');
  }catch(e){imcPathError.textContent=String(e)}
  finally{button.disabled=false}
 };
@@ -151,29 +165,19 @@ document.getElementById('selectMode').onclick=e=>{selectMode=!selectMode;e.curre
 map.on('mousedown',e=>{if(!selectMode||e.originalEvent.button!==0)return;dragStart=e.latlng;if(rect)map.removeLayer(rect);rect=L.rectangle([dragStart,dragStart],{color:'#d23636',weight:2,fillOpacity:.10}).addTo(map)});
 map.on('mousemove',e=>{if(dragStart&&rect)rect.setBounds(L.latLngBounds(dragStart,e.latlng))});
 document.addEventListener('mouseup',e=>{if(!dragStart)return;const end=map.mouseEventToLatLng(e);const bounds=L.latLngBounds(dragStart,end),sw=bounds.getSouthWest(),ne=bounds.getNorthEast();dragStart=null;if(sw.lat===ne.lat||sw.lng===ne.lng)return;setBox([sw.lat,sw.lng,ne.lat,ne.lng])});
-document.getElementById('build').onclick=async()=>{
- if(running)return;
- const a=parseBox(box.value),dest=copyTo.value.trim(),name=mapName.value.trim(),imc=imcExePath;
- if(!valid(a)){status('先に正しいbboxを指定してください。');return}
- if(!dest){status('出力先パスを入力してください。');return}
- if(!imc){imcDialog.showModal();return}
- if(name&&!/^[A-Za-z0-9-]{1,32}$/.test(name)){status('AT5名の先頭文字は半角英数字とハイフンで入力してください。');return}
- await persist();running=true;document.getElementById('build').disabled=true;status('Buildを開始しました。完了までこの画面を開いたままにしてください。');
- 
- try{const r=await fetch('/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bbox:a,copyTo:dest,at5Prefix:name,imcExe:imc})});const j=await r.json();if(!r.ok)throw Error(j.error||'Build開始に失敗');poll()}catch(e){running=false;document.getElementById('build').disabled=false;status(String(e))}
-};
 document.getElementById('runPowerShell').onclick=async()=>{
  if(running)return;
- const a=parseBox(box.value),dest=copyTo.value.trim(),name=mapName.value.trim(),imc=imcExePath;
+ const a=parseBox(box.value),dest=copyTo.value.trim(),name=mapName.value.trim(),imc=imcExePath,command=commandBox.value.trim();
  if(!valid(a)){status('先に正しいbboxを指定してください。');return}
  if(!dest){status('出力先パスを入力してください。');return}
  if(!imc){imcDialog.showModal();return}
  if(name&&!/^[A-Za-z0-9-]{1,32}$/.test(name)){status('AT5名の先頭文字は半角英数字とハイフンで入力してください。');return}
- try{const r=await fetch('/powershell',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bbox:a,copyTo:dest,at5Prefix:name,imcExe:imc})});const j=await r.json();if(!r.ok)throw Error(j.error||'PowerShellを起動できません');await persist();running=true;document.getElementById('build').disabled=true;status(j.message);poll()}catch(e){status(String(e))}
+ if(!command){status('PowerShellコマンドを確認してください。');return}
+ try{const r=await fetch('/powershell',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bbox:a,copyTo:dest,at5Prefix:name,imcExe:imc,command})});const j=await r.json();if(!r.ok)throw Error(j.error||'PowerShellを起動できません');await persist();running=true;document.getElementById('runPowerShell').disabled=true;status(j.message);poll()}catch(e){status(String(e))}
 };
 async function poll(){
  try{const r=await fetch('/log');const j=await r.json();
- if(j.running){setTimeout(poll,1200)}else{running=false;document.getElementById('build').disabled=false;status(j.result||'処理が終了しました。ログを確認してください。')}
+ if(j.running){setTimeout(poll,1200)}else{running=false;document.getElementById('runPowerShell').disabled=false;status(j.result||'処理が終了しました。ログを確認してください。')}
  }catch(e){setTimeout(poll,2000)}
 }
 (async()=>{try{const s=await (await fetch('/state')).json();copyTo.value=s.copyTo||copyTo.value;mapName.value=s.at5Prefix||'';imcExePath=s.imcExe||'';imcTemplatePath=s.templateSap||'';imcStatus.textContent=s.imcValid?'IMC設定済み':'IMC設定を確認してください';setBox(s.bbox||[35.140,139.130,35.330,139.590],false);status('範囲を読み込みました。地図はドラッグで移動できます。');if(!s.imcValid)imcDialog.showModal()}catch(e){setBox([35.140,139.130,35.330,139.590],false);imcStatus.textContent='IMC未設定';imcDialog.showModal();status('既定の範囲を表示しています。')}})();
@@ -321,20 +325,9 @@ class AppState:
             raise FileNotFoundError(f"Buildスクリプトがありません: {BUILDER}")
         self.save({"bbox": bbox, "copyTo": copy_to, "at5Prefix": at5_prefix,
                    "imcExe": str(imc_exe), "templateSap": str(template_sap)})
-        args = [
-            sys.executable, str(BUILDER),
-            "--bbox", *[str(v) for v in bbox],
-            "--imc-exe", str(imc_exe),
-            "--template-sap", str(template_sap),
-            "--output-dir", output_dir_for_bbox(bbox),
-            "--min-resolution", "1", "--max-resolution", "8192",
-            "--filter-alpha", "0", "--copy-to", copy_to,
-        ]
-        if at5_prefix:
-            args.extend(["--at5-prefix", at5_prefix])
-        def ps_quote(value):
-            return "'" + str(value).replace("'", "''") + "'"
-        ps_command = "& " + " ".join(ps_quote(x) for x in args) + "; if ($LASTEXITCODE -ne 0) { Write-Host ('Build failed: ' + $LASTEXITCODE) -ForegroundColor Red }"
+        ps_command = str(data.get("command", "")).strip()
+        if not ps_command:
+            raise ValueError("PowerShellコマンドが空です")
         proc = subprocess.Popen(
             ["powershell.exe", "-NoExit", "-Command", ps_command],
             cwd=ROOT, creationflags=subprocess.CREATE_NEW_CONSOLE,
@@ -380,7 +373,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = urlparse(self.path).path
         if path == "/":
-            body = HTML.replace("__PYTHON_EXECUTABLE_JSON__", json.dumps(sys.executable)).encode("utf-8")
+            body = HTML.replace("__PYTHON_EXECUTABLE_JSON__", json.dumps(sys.executable)).replace("__TOOL_ROOT_JSON__", json.dumps(str(ROOT))).encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
