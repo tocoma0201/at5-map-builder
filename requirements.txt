@@ -1,2 +1,3 @@
 # Dependencies for map download and PNG assembly
 Pillow>=10.0
+zipfile64>=0.1; python_version >= "3.10"
