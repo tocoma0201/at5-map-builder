@@ -71,7 +71,7 @@ dialog{border:1px solid #aab6bf;border-radius:8px;width:min(480px,calc(100vw - 3
 <h2>IMCの場所を設定</h2>
 <p class="note">エクスプローラーでInsightMapCreator.exeを右クリックして「パスのコピー」を選び、ここに貼り付けてください。Raster Mode設定はmapcreator.zip内のSample ZIPから自動取得するため、追加展開は不要です。設定はこのPCに保存され、「IMC設定」からいつでも変更できます。</p>
 <label for="imcPath">InsightMapCreator.exeのパス</label>
-<input id="imcPath" placeholder="例: C:\Users\名前\Documents\AT5MapBuilder\IMC\InsightMapCreator.exe">
+<div class="path-picker"><input id="imcPath" placeholder="例: C:\Users\名前\Documents\AT5MapBuilder\IMC\InsightMapCreator.exe"><button id="browseImc" type="button">参照…</button></div>
 <p id="imcPathError" class="note warning"></p>
 <div class="actions"><button id="cancelImc" type="button">キャンセル</button><button id="saveImc" type="button" class="primary">保存</button></div>
 </dialog>
@@ -158,6 +158,13 @@ document.getElementById('browseOutput').onclick=async()=>{
 };
 mapName.oninput=()=>{updateCommand();persist()};
 document.getElementById('imcSettings').onclick=()=>{imcPath.value=imcExePath;imcPathError.textContent='';imcDialog.showModal()};
+document.getElementById('browseImc').onclick=async()=>{
+ try{
+  const r=await fetch('/select-imc-exe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initialPath:imcPath.value.trim()||imcExePath})});
+  const j=await r.json();if(!r.ok)throw Error(j.error||'ファイル選択画面を開けません');
+  if(j.path){imcPath.value=j.path;imcPathError.textContent='';}
+ }catch(e){imcPathError.textContent=String(e)}
+};
 document.getElementById('cancelImc').onclick=()=>imcDialog.close();
 document.getElementById('saveImc').onclick=async()=>{
  const path=imcPath.value.trim();
@@ -395,6 +402,34 @@ def select_output_directory(data):
     return {"path": selected} if selected else {"cancelled": True}
 
 
+def select_imc_executable(data):
+    if os.name != "nt":
+        raise RuntimeError("ファイル選択画面はWindows上で利用できます")
+    import tkinter as tk
+    from tkinter import filedialog
+
+    initial = str(data.get("initialPath", "")).strip().strip('"')
+    initial_path = Path(initial).expanduser() if initial else Path.home()
+    initial_dir = initial_path.parent if initial_path.is_file() else initial_path
+    if not initial_dir.is_dir():
+        initial_dir = initial_dir.parent if initial_dir.parent.is_dir() else Path.home()
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+    try:
+        selected = filedialog.askopenfilename(
+            parent=root,
+            title="InsightMapCreator.exeを選択",
+            initialdir=str(initial_dir),
+            filetypes=(("InsightMapCreator.exe", "InsightMapCreator.exe"),
+                       ("実行ファイル", "*.exe"),
+                       ("すべてのファイル", "*.*")),
+        )
+    finally:
+        root.destroy()
+    return {"path": selected} if selected else {"cancelled": True}
+
+
 def validate_at5_prefix(value):
     prefix = str(value or "").strip()
     if prefix and not all(char.isascii() and (char.isalnum() or char == "-") for char in prefix):
@@ -429,6 +464,8 @@ class Handler(BaseHTTPRequestHandler):
             data = json.loads(self.rfile.read(length).decode("utf-8"))
             if path == "/select-output-dir":
                 self.send_json(200, select_output_directory(data))
+            elif path == "/select-imc-exe":
+                self.send_json(200, select_imc_executable(data))
             elif path == "/imc-settings":
                 self.send_json(200, state.set_imc(data))
             elif path == "/state":
