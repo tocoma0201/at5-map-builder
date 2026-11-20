@@ -69,6 +69,10 @@ Pythonをインストールした直後は、開いているPowerShellやエク�
 
 IMCはこのリポジトリに同梱していません。配布元から取得し、READMEの案内に沿って展開してください。IMC本体ZIPを展開し、Sample ZIPまたは展開済みのIMC_Sampleフォルダーを残せばツールがRaster Mode設定を読み取ります。Sample ZIPをすでに展開済みなら、検出できる場所にIMC_Sampleフォルダーがある限りZIPを削除しても構いません。詳しくは [IMC_INSTALL.md](./IMC_INSTALL.md) を参照してください。
 
+## 困ったとき
+
+インストールで困った場合は、このREADMEのURL（https://github.com/tocoma0201/at5-map-builder）をAIサービスに伝えて相談する方法もあります。エラー画面やログを共有する場合は、ユーザー名や個人のフォルダー名などが含まれていないか確認してください。
+
 ## 起動と地図作成
 
 1. Start_AT5_Map_Builder.bat をダブルクリックします。ブラウザーで範囲設定画面が開きます。
