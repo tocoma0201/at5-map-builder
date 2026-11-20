@@ -45,7 +45,7 @@ textarea{height:62px;resize:vertical} button{cursor:pointer;background:#eef4f7}
 .primary{background:#176b9b;color:white;border-color:#176b9b}
 .good{background:#e8f6ec;color:#175b2b}
 .warning{background:#fff0d9;color:#754500}
-.note{font-size:13px;color:#52606b;line-height:1.45}
+.note{font-size:13px;color:#52606b;line-height:1.45}\n.hint{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;margin-left:3px;border:1px solid #738491;border-radius:50%;font-size:12px;color:#52606b;cursor:help;vertical-align:middle}
 #status{white-space:pre-wrap;background:#f4f6f8;padding:9px;min-height:42px;margin-top:10px}
 @media(max-width:800px){main{display:flex;flex-direction:column}aside{border:0}#map{height:55vh;min-height:380px}}
 </style>
@@ -62,13 +62,13 @@ textarea{height:62px;resize:vertical} button{cursor:pointer;background:#eef4f7}
 <div id="estimate" class="note"></div>
 <label for="mapName">Ti2で選ぶ地図名／AT5先頭文字（任意）</label>
 <input id="mapName" placeholder="例: Map01" maxlength="32">
-<label for="copyTo">PCまたはSDカードの出力先フォルダー（SDカードの例：F:\ShadedRelief）</label>
+<label for="copyTo">出力先フォルダー <span class="hint" tabindex="0" role="img" aria-label="SDカードに保存する場合のフォルダー指定方法" title="SDカードに保存する場合は、カード直下の ShadedRelief フォルダーを指定してください。例：F:\ShadedRelief。PCに保存する場合は任意のフォルダーを指定できます。">ⓘ</span></label>
 <input id="copyTo" placeholder="例: F:\ShadedRelief">
 <label for="imcExe">Insight Map Creator の実行ファイル</label>
 <input id="imcExe" placeholder="InsightMapCreator.exe のフルパス">
 <label for="templateSap">Raster Mode SAPテンプレート</label>
 <input id="templateSap" placeholder="IMCで保存したRaster Mode用 .sap のフルパス">
-<p class="note">SDカードに保存する場合は、カード直下の ShadedRelief フォルダーを指定してください。PCに保存する場合は任意のフォルダーを指定できます。Windows専用ツールです。</p>
+
 <p class="note">生成条件：Min 1〜Max 8192 / Filter Alpha 0。容量の1,000 MBは推奨目安で、超えても警告のみで作成を続けます。タイル数が目安1,000枚を超えた場合も警告のみです。名前を入力すると、AT5ファイル名の先頭に付けると同時にAtlas Descriptionを「M=名前」に設定します。Ti2で地図を選ぶ際の識別名として使います。別の地図セットとは異なる名前にしてください。AT5容量は過去の試験結果を面積比で換算した概算です。</p>
 <div class="actions"><button id="save">範囲を保存</button><button id="build" class="primary">AT5を作成して出力先へ保存</button></div>
 <label>PowerShellコマンド</label><textarea id="command" readonly></textarea>
