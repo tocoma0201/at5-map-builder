@@ -45,6 +45,7 @@ textarea{height:62px;resize:vertical} button{cursor:pointer;background:#eef4f7}
 .good{background:#e8f6ec;color:#175b2b}
 .warning{background:#fff0d9;color:#754500}
 .note{font-size:13px;color:#52606b;line-height:1.45}
+dialog{border:1px solid #aab6bf;border-radius:8px;width:min(480px,calc(100vw - 32px));padding:18px;box-shadow:0 12px 32px #0003}dialog::backdrop{background:#0006}dialog h2{margin:0 0 8px;font-size:19px}dialog .actions{margin-top:12px}
 #status{white-space:pre-wrap;background:#f4f6f8;padding:9px;min-height:42px;margin-top:10px}
 @media(max-width:800px){main{display:flex;flex-direction:column}aside{border:0}#map{height:55vh;min-height:380px}}
 </style>
@@ -63,8 +64,15 @@ textarea{height:62px;resize:vertical} button{cursor:pointer;background:#eef4f7}
 <input id="mapName" placeholder="例: Map01" maxlength="32">
 <label for="copyTo">出力先フォルダー</label>
 <input id="copyTo" placeholder="例: F:\ShadedRelief" title="SDカードに保存する場合は、カード直下の ShadedRelief フォルダーを指定してください。例：F:\ShadedRelief。PCに保存する場合は任意のフォルダーを指定できます。">
-<label for="imcExe">Insight Map Creator の実行ファイル</label>
-<input id="imcExe" placeholder="InsightMapCreator.exe のフルパス">
+<div class="actions"><button id="imcSettings" type="button">IMC設定</button><span id="imcStatus" class="note">確認中…</span></div>
+<dialog id="imcDialog">
+<h2>IMCの場所を設定</h2>
+<p class="note">READMEの案内に沿ってIMCを展開し、InsightMapCreator.exeのフルパスを入力してください。設定はこのPCに保存されます。</p>
+<label for="imcPath">InsightMapCreator.exeのパス</label>
+<input id="imcPath" placeholder="例: C:\\Users\\名前\\Documents\\AT5MapBuilder\\IMC\\InsightMapCreator.exe">
+<p id="imcPathError" class="note warning"></p>
+<div class="actions"><button id="cancelImc" type="button">キャンセル</button><button id="saveImc" type="button" class="primary">保存</button></div>
+</dialog>
 
 
 <p class="note">生成条件：Min 1〜Max 8192 / Filter Alpha 0。容量の1,000 MBは推奨目安で、超えても警告のみで作成を続けます。タイル数が目安1,000枚を超えた場合も警告のみです。名前を入力すると、AT5ファイル名の先頭に付けると同時にAtlas Descriptionを「M=名前」に設定します。Ti2で地図を選ぶ際の識別名として使います。別の地図セットとは異なる名前にしてください。AT5容量は過去の試験結果を面積比で換算した概算です。</p>
@@ -84,7 +92,9 @@ L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',{
 }).addTo(map);
 let rect=null, dragStart=null, bbox=null, running=false, selectMode=false;
 const box=document.getElementById('bbox'), copyTo=document.getElementById('copyTo'), mapName=document.getElementById('mapName');
-const imcExe=document.getElementById('imcExe');
+const imcDialog=document.getElementById('imcDialog'), imcPath=document.getElementById('imcPath');
+const imcStatus=document.getElementById('imcStatus'), imcPathError=document.getElementById('imcPathError');
+let imcExePath='', imcTemplatePath='';
 
 function valid(a){return a.length===4&&a.every(Number.isFinite)&&a[0]<a[2]&&a[1]<a[3]&&a[0]>=-90&&a[2]<=90&&a[1]>=-180&&a[3]<=180}
 function setBox(a,save=true){
@@ -108,24 +118,36 @@ function updateEstimate(){
 }
 function updateCommand(){}
 async function persist(){
- try{await fetch('/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bbox,copyTo:copyTo.value.trim(),at5Prefix:mapName.value.trim(),imcExe:imcExe.value.trim()})})}catch(e){}
+ try{await fetch('/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bbox,copyTo:copyTo.value.trim(),at5Prefix:mapName.value.trim(),imcExe:imcExePath,templateSap:imcTemplatePath})})}catch(e){}
 }
 document.getElementById('apply').onclick=()=>setBox(parseBox(box.value));
 document.getElementById('useMap').onclick=()=>{const b=map.getBounds();setBox([b.getSouth(),b.getWest(),b.getNorth(),b.getEast()])};
 document.getElementById('save').onclick=async()=>{await persist();status('範囲と出力先を保存しました。次回起動時に復元します。')};
 copyTo.onchange=()=>{updateCommand();persist()};
 mapName.oninput=()=>{updateCommand();persist()};
-imcExe.onchange=()=>{updateCommand();persist()};
+document.getElementById('imcSettings').onclick=()=>{imcPath.value=imcExePath;imcPathError.textContent='';imcDialog.showModal()};
+document.getElementById('cancelImc').onclick=()=>imcDialog.close();
+document.getElementById('saveImc').onclick=async()=>{
+ const path=imcPath.value.trim();
+ if(!path){imcPathError.textContent='InsightMapCreator.exeのパスを入力してください。';return}
+ const button=document.getElementById('saveImc');button.disabled=true;imcPathError.textContent='IMCと付属設定を確認しています…';
+ try{
+  const r=await fetch('/imc-settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({imcExe:path})});
+  const j=await r.json();if(!r.ok)throw Error(j.error||'IMCを設定できません');
+  imcExePath=j.imcExe;imcTemplatePath=j.templateSap||'';imcStatus.textContent='IMC設定済み';imcDialog.close();await persist();status('IMCの場所を保存しました。');
+ }catch(e){imcPathError.textContent=String(e)}
+ finally{button.disabled=false}
+};
 document.getElementById('selectMode').onclick=e=>{selectMode=!selectMode;e.currentTarget.textContent=selectMode?'範囲選択: ON（ドラッグで範囲指定）':'範囲選択: OFF（ドラッグで地図移動）';e.currentTarget.classList.toggle('primary',selectMode);map.dragging[selectMode?'disable':'enable']()};
 map.on('mousedown',e=>{if(!selectMode||e.originalEvent.button!==0)return;dragStart=e.latlng;if(rect)map.removeLayer(rect);rect=L.rectangle([dragStart,dragStart],{color:'#d23636',weight:2,fillOpacity:.10}).addTo(map)});
 map.on('mousemove',e=>{if(dragStart&&rect)rect.setBounds(L.latLngBounds(dragStart,e.latlng))});
 document.addEventListener('mouseup',e=>{if(!dragStart)return;const end=map.mouseEventToLatLng(e);const bounds=L.latLngBounds(dragStart,end),sw=bounds.getSouthWest(),ne=bounds.getNorthEast();dragStart=null;if(sw.lat===ne.lat||sw.lng===ne.lng)return;setBox([sw.lat,sw.lng,ne.lat,ne.lng])});
 document.getElementById('build').onclick=async()=>{
  if(running)return;
- const a=parseBox(box.value),dest=copyTo.value.trim(),name=mapName.value.trim(),imc=imcExe.value.trim();
+ const a=parseBox(box.value),dest=copyTo.value.trim(),name=mapName.value.trim(),imc=imcExePath;
  if(!valid(a)){status('先に正しいbboxを指定してください。');return}
  if(!dest){status('出力先パスを入力してください。');return}
- if(!imc){status('Insight Map Creatorの実行ファイルを指定してください。');return}
+ if(!imc){imcDialog.showModal();return}
  if(name&&!/^[A-Za-z0-9-]{1,32}$/.test(name)){status('AT5名の先頭文字は半角英数字とハイフンで入力してください。');return}
  await persist();running=true;document.getElementById('build').disabled=true;status('Buildを開始しました。完了までこの画面を開いたままにしてください。');
  
@@ -133,10 +155,10 @@ document.getElementById('build').onclick=async()=>{
 };
 document.getElementById('runPowerShell').onclick=async()=>{
  if(running)return;
- const a=parseBox(box.value),dest=copyTo.value.trim(),name=mapName.value.trim(),imc=imcExe.value.trim();
+ const a=parseBox(box.value),dest=copyTo.value.trim(),name=mapName.value.trim(),imc=imcExePath;
  if(!valid(a)){status('先に正しいbboxを指定してください。');return}
  if(!dest){status('出力先パスを入力してください。');return}
- if(!imc){status('Insight Map Creatorの実行ファイルを指定してください。');return}
+ if(!imc){imcDialog.showModal();return}
  if(name&&!/^[A-Za-z0-9-]{1,32}$/.test(name)){status('AT5名の先頭文字は半角英数字とハイフンで入力してください。');return}
  try{const r=await fetch('/powershell',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bbox:a,copyTo:dest,at5Prefix:name,imcExe:imc})});const j=await r.json();if(!r.ok)throw Error(j.error||'PowerShellを起動できません');await persist();running=true;document.getElementById('build').disabled=true;status(j.message);poll()}catch(e){status(String(e))}
 };
@@ -145,7 +167,7 @@ async function poll(){
  if(j.running){setTimeout(poll,1200)}else{running=false;document.getElementById('build').disabled=false;status(j.result||'処理が終了しました。ログを確認してください。')}
  }catch(e){setTimeout(poll,2000)}
 }
-(async()=>{try{const s=await (await fetch('/state')).json();copyTo.value=s.copyTo||copyTo.value;mapName.value=s.at5Prefix||'';imcExe.value=s.imcExe||'';setBox(s.bbox||[35.140,139.130,35.330,139.590],false);status('範囲を読み込みました。地図はドラッグで移動できます。')}catch(e){setBox([35.140,139.130,35.330,139.590],false);status('既定の範囲を表示しています。')}})();
+(async()=>{try{const s=await (await fetch('/state')).json();copyTo.value=s.copyTo||copyTo.value;mapName.value=s.at5Prefix||'';imcExePath=s.imcExe||'';imcTemplatePath=s.templateSap||'';imcStatus.textContent=imcExePath?'IMC設定済み':'IMC未設定';setBox(s.bbox||[35.140,139.130,35.330,139.590],false);status('範囲を読み込みました。地図はドラッグで移動できます。');if(!imcExePath)imcDialog.showModal()}catch(e){setBox([35.140,139.130,35.330,139.590],false);imcStatus.textContent='IMC未設定';imcDialog.showModal();status('既定の範囲を表示しています。')}})();
 </script>
 </body>
 </html>
