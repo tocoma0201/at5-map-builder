@@ -42,6 +42,7 @@ aside{padding:14px;border-right:1px solid #ccd4da;overflow:auto}
 label{display:block;font-weight:600;margin:11px 0 4px}
 input,textarea,button{font:inherit;padding:8px;border:1px solid #aab6bf;border-radius:5px;width:100%}
 textarea{height:62px;resize:vertical} button{cursor:pointer;background:#eef4f7}
+.path-picker{display:flex;gap:6px}.path-picker input{flex:1;min-width:0}.path-picker button{width:auto;white-space:nowrap}
 .actions{display:flex;gap:8px;margin-top:8px}.actions button{flex:1}
 .primary{background:#176b9b;color:white;border-color:#176b9b}
 .good{background:#e8f6ec;color:#175b2b}
@@ -64,7 +65,7 @@ dialog{border:1px solid #aab6bf;border-radius:8px;width:min(480px,calc(100vw - 3
 <label for="mapName">Ti2で選ぶ地図名／AT5先頭文字（任意）</label>
 <input id="mapName" placeholder="例: Map01" maxlength="32">
 <label for="copyTo">出力先フォルダー</label>
-<input id="copyTo" placeholder="例: F:\ShadedRelief" title="SDカードに保存する場合は、カード直下の ShadedRelief フォルダーを指定してください。例：F:\ShadedRelief。PCに保存する場合は任意のフォルダーを指定できます。">
+<div class="path-picker"><input id="copyTo" placeholder="例: F:\ShadedRelief" title="SDカードに保存する場合は、カード直下の ShadedRelief フォルダーを指定してください。例：F:\ShadedRelief。PCに保存する場合は任意のフォルダーを指定できます。"><button id="browseOutput" type="button">参照…</button></div>
 <div class="actions"><button id="imcSettings" type="button">IMC設定</button><span id="imcStatus" class="note">確認中…</span></div>
 <dialog id="imcDialog">
 <h2>IMCの場所を設定</h2>
@@ -148,6 +149,13 @@ box.addEventListener('keydown',e=>{
  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();setBox(parseBox(box.value))}
 });
 copyTo.onchange=()=>{updateCommand();persist()};
+document.getElementById('browseOutput').onclick=async()=>{
+ try{
+  const r=await fetch('/select-output-dir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initialDir:copyTo.value.trim()})});
+  const j=await r.json();if(!r.ok)throw Error(j.error||'フォルダー選択画面を開けません');
+  if(j.path){copyTo.value=j.path;updateCommand();await persist();status('出力先フォルダーを設定しました。')}
+ }catch(e){status(String(e))}
+};
 mapName.oninput=()=>{updateCommand();persist()};
 document.getElementById('imcSettings').onclick=()=>{imcPath.value=imcExePath;imcPathError.textContent='';imcDialog.showModal()};
 document.getElementById('cancelImc').onclick=()=>imcDialog.close();
@@ -362,6 +370,31 @@ def validate_bbox(value):
         raise ValueError("bboxの範囲または南西北東の順を確認してください")
     return bbox
 
+def select_output_directory(data):
+    if os.name != "nt":
+        raise RuntimeError("フォルダー選択画面はWindows上で利用できます")
+    import tkinter as tk
+    from tkinter import filedialog
+
+    initial = str(data.get("initialDir", "")).strip().strip('"')
+    initial_path = Path(initial).expanduser() if initial else Path.home()
+    if not initial_path.is_dir():
+        initial_path = initial_path.parent if initial_path.parent.is_dir() else Path.home()
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+    try:
+        selected = filedialog.askdirectory(
+            parent=root,
+            title="出力先フォルダーを選択",
+            initialdir=str(initial_path),
+            mustexist=True,
+        )
+    finally:
+        root.destroy()
+    return {"path": selected} if selected else {"cancelled": True}
+
+
 def validate_at5_prefix(value):
     prefix = str(value or "").strip()
     if prefix and not all(char.isascii() and (char.isalnum() or char == "-") for char in prefix):
@@ -394,7 +427,9 @@ class Handler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0"))
             data = json.loads(self.rfile.read(length).decode("utf-8"))
-            if path == "/imc-settings":
+            if path == "/select-output-dir":
+                self.send_json(200, select_output_directory(data))
+            elif path == "/imc-settings":
                 self.send_json(200, state.set_imc(data))
             elif path == "/state":
                 self.send_json(200, state.save(data))
