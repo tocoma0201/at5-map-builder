@@ -111,6 +111,15 @@ def fetch_tile(z, x, y, cache_dir, refresh=False, source="standard", optional=Fa
                     tile.parent.mkdir(parents=True, exist_ok=True)
                     result.save(tile, format="PNG")
                     return result
+                # 航空写真が未提供の場所は、プレビューと同じ標準地図で補う。
+                if source == "aerial" and exc.code == 404:
+                    print(f"航空写真タイルなし。標準地図で補います: z{z}/x{x}/y{y}")
+                    result = fetch_tile(
+                        z, x, y, cache_dir, refresh, source="standard"
+                    )
+                    tile.parent.mkdir(parents=True, exist_ok=True)
+                    result.convert("RGB").save(tile, format="JPEG", quality=95)
+                    return result
                 raise
             with Image.open(io.BytesIO(data)) as img:
                 img.load()
