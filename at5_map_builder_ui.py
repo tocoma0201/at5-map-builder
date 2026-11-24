@@ -71,7 +71,7 @@ dialog{border:1px solid #aab6bf;border-radius:8px;width:min(480px,calc(100vw - 3
 <option value="standard">標準地図</option>
 <option value="aerial">航空写真</option>
 </select>
-<label><input id="lakeContours" type="checkbox">湖沼図（等深線）を重ねる</label>
+<label title="等深線は背景画像に焼き込まれるため、魚探で個別に表示・非表示を切り替えられません。Elite Ti2のGenesis LiveはLowranceまたはC-MAPのChart sourceでのみ利用でき、カスタムAT5地図には重ねられません。"><input id="lakeContours" type="checkbox">湖沼図（等深線）を重ねる</label>
 <label for="mapZoom">出力ズームレベル</label>
 <select id="mapZoom">
 <option value="15">ZL 15</option>
