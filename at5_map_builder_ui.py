@@ -117,25 +117,27 @@ const map=L.map('map').setView([35.24,139.36],10);
 const baseMapBox=document.getElementById('baseMap');
 const lakeContoursBox=document.getElementById('lakeContours');
 const mapZoomBox=document.getElementById('mapZoom');
-let baseTileLayer=null, lakeContourLayer=null;
+let baseTileLayer=null, aerialTileLayer=null, lakeContourLayer=null;
 function refreshMapLayers(){
  if(baseTileLayer)map.removeLayer(baseTileLayer);
+ if(aerialTileLayer)map.removeLayer(aerialTileLayer);
  if(lakeContourLayer)map.removeLayer(lakeContourLayer);
  const isAerial=baseMapBox.value==='aerial';
- const baseUrl=isAerial
-  ?'https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg'
-  :'https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png';
- const baseName=isAerial?'全国最新写真（シームレス）':'標準地図';
- baseTileLayer=L.tileLayer(baseUrl,{minZoom:5,maxZoom:18,
-  minNativeZoom:isAerial?14:5,maxNativeZoom:18,
-  attribution:'地理院タイル（'+baseName+'） | 国土地理院'}).addTo(map);
+ const standardUrl='https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png';
+ baseTileLayer=L.tileLayer(standardUrl,{minZoom:5,maxZoom:18,
+  attribution:'地理院タイル（標準地図） | 国土地理院'}).addTo(map);
+ if(isAerial){
+  aerialTileLayer=L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg',{
+   minZoom:14,maxZoom:18,
+   attribution:'地理院タイル（全国最新写真・シームレス） | 国土地理院'
+  }).addTo(map);
+ }
  if(lakeContoursBox.checked){
   lakeContourLayer=L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/lake1/{z}/{x}/{y}.png',{
    minZoom:11,maxZoom:17,opacity:0.9,
    attribution:'地理院タイル（湖沼図） | 国土地理院'
   }).addTo(map);
  }
- if(isAerial&&map.getZoom()<14)map.setZoom(14);
  if(lakeContoursBox.checked&&map.getZoom()>17)map.setZoom(17);
 }
 let rect=null, dragStart=null, bbox=null, running=false, selectMode=false;
