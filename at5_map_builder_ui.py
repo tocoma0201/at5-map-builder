@@ -24,6 +24,9 @@ STATE_DIR = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "AT5MapBuil
 STATE_FILE = STATE_DIR / "range-ui-state.json"
 DEFAULT_COPY_TO = ""
 DEFAULT_IMC_EXE = os.environ.get("AT5_IMC_EXE", "")
+DEFAULT_BASE_MAP = "standard"
+DEFAULT_ZOOM = 15
+DEFAULT_LAKE_CONTOURS = False
 # 画面表示の版番号をVERSIONファイルで一元管理する。
 TOOL_VERSION = (ROOT / "VERSION").read_text(encoding="ascii").strip()
 
@@ -41,8 +44,10 @@ main{display:grid;grid-template-columns:minmax(330px,390px) 1fr;min-height:calc(
 aside{padding:14px;border-right:1px solid #ccd4da;overflow:auto}
 #map{height:calc(100vh - 48px);min-height:520px}
 label{display:block;font-weight:600;margin:11px 0 4px}
-input,textarea,button{font:inherit;padding:8px;border:1px solid #aab6bf;border-radius:5px;width:100%}
+input,textarea,button,select{font:inherit;padding:8px;border:1px solid #aab6bf;border-radius:5px;width:100%}
+input[type=checkbox]{width:auto;vertical-align:middle;margin-right:6px}
 textarea{height:62px;resize:vertical} button{cursor:pointer;background:#eef4f7}
+.map-option{margin:8px 0}.map-option label{margin-top:8px}.map-option .note{margin:4px 0}
 .path-picker{display:flex;gap:6px}.path-picker input{flex:1;min-width:0}.path-picker button{width:auto;white-space:nowrap}
 .actions{display:flex;gap:8px;margin-top:8px}.actions button{flex:1}
 .primary{background:#176b9b;color:white;border-color:#176b9b}
@@ -60,6 +65,21 @@ dialog{border:1px solid #aab6bf;border-radius:8px;width:min(480px,calc(100vw - 3
 <aside>
 <p class="note">地図は通常ドラッグで移動できます。「範囲選択」をONにした間だけドラッグで範囲を囲めます。座標は「南 西 北 東」の順で入力します。最後に使った範囲は次回も保持されます。</p>
 <button id="selectMode">範囲選択: OFF（ドラッグで地図移動）</button>
+<div class="map-option">
+<label for="baseMap">背景地図</label>
+<select id="baseMap">
+<option value="standard">標準地図</option>
+<option value="aerial">航空写真</option>
+</select>
+<label><input id="lakeContours" type="checkbox">湖沼図（等深線）を重ねる</label>
+<label for="mapZoom">出力ズームレベル</label>
+<select id="mapZoom">
+<option value="15">ZL 15</option>
+<option value="16">ZL 16</option>
+<option value="17">ZL 17</option>
+</select>
+<p class="note">湖沼図は国土地理院が公開する調査済み湖沼の範囲で利用できます。航空写真・湖沼図の取得範囲は地図上で確認してください。</p>
+</div>
 <label for="bbox">範囲（南, 西, 北, 東）</label>
 <textarea id="bbox" spellcheck="false" placeholder="35.140, 139.130, 35.330, 139.590" title="南, 西, 北, 東の順に入力し、Enterで地図上の選択範囲へ反映します。"></textarea>
 <div id="estimate" class="note"></div>
@@ -94,9 +114,29 @@ const pythonExecutable = __PYTHON_EXECUTABLE_JSON__;
 const toolRoot = __TOOL_ROOT_JSON__;
 const commandBox = document.getElementById('command');
 const map=L.map('map').setView([35.24,139.36],10);
-L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',{
- maxZoom:18, attribution:'地理院タイル（標準地図） | 国土地理院'
-}).addTo(map);
+const baseMapBox=document.getElementById('baseMap');
+const lakeContoursBox=document.getElementById('lakeContours');
+const mapZoomBox=document.getElementById('mapZoom');
+let baseTileLayer=null, lakeContourLayer=null;
+function refreshMapLayers(){
+ if(baseTileLayer)map.removeLayer(baseTileLayer);
+ if(lakeContourLayer)map.removeLayer(lakeContourLayer);
+ const isAerial=baseMapBox.value==='aerial';
+ const baseUrl=isAerial
+  ?'https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg'
+  :'https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png';
+ const baseName=isAerial?'全国最新写真（シームレス）':'標準地図';
+ baseTileLayer=L.tileLayer(baseUrl,{minZoom:isAerial?14:5,maxZoom:18,
+  attribution:'地理院タイル（'+baseName+'） | 国土地理院'}).addTo(map);
+ if(lakeContoursBox.checked){
+  lakeContourLayer=L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/lake1/{z}/{x}/{y}.png',{
+   minZoom:11,maxZoom:17,opacity:0.9,
+   attribution:'地理院タイル（湖沼図） | 国土地理院'
+  }).addTo(map);
+ }
+ if(isAerial&&map.getZoom()<14)map.setZoom(14);
+ if(lakeContoursBox.checked&&map.getZoom()>17)map.setZoom(17);
+}
 let rect=null, dragStart=null, bbox=null, running=false, selectMode=false;
 const box=document.getElementById('bbox'), copyTo=document.getElementById('copyTo'), mapName=document.getElementById('mapName');
 const imcDialog=document.getElementById('imcDialog'), imcPath=document.getElementById('imcPath');
@@ -125,6 +165,10 @@ function setBox(a,save=true,fitMap=false){
 function parseBox(s){const parts=s.trim().split(/[\s,，]+/).filter(Boolean);if(parts.length!==4)return [];return parts.map(Number)}
 function status(s){document.getElementById('status').textContent=s}
 function outputTag(a){return a.map(x=>(x<0?'m':'p')+String(Math.round(Math.abs(x)*1000000)).padStart(9,'0')).join('-')}
+function outputDirectory(a){
+ const source=baseMapBox.value+(lakeContoursBox.checked?'-lake':'')+'-z'+mapZoomBox.value;
+ return 'map-ui-'+source+'-'+outputTag(a);
+}
 function areaKm2(a){const r=6371,rad=Math.PI/180;return r*r*(a[3]-a[1])*rad*(Math.sin(a[2]*rad)-Math.sin(a[0]*rad))}
 // 試験済み範囲の実測値を基準に、面積比で容量を概算する。
 function updateEstimate(){
@@ -142,14 +186,16 @@ function updateCommand(){
  const args=[pythonExecutable,toolRoot.replace(/\\/g,'/')+'/build_at5_map.py',
   '--bbox',...a.map(v=>String(Number(v).toFixed(6))),
   '--imc-exe',imcExePath,'--template-sap',imcTemplatePath,
-  '--output-dir','map-ui-'+outputTag(a),
+  '--base-map',baseMapBox.value,'--zoom',mapZoomBox.value,
+  '--output-dir',outputDirectory(a),
   '--min-resolution','1','--max-resolution','8192','--filter-alpha','0','--copy-to',dest];
+ if(lakeContoursBox.checked)args.push('--lake-contours');
  if(name)args.push('--at5-prefix',name);
  commandBox.value="Set-Location -LiteralPath "+q(toolRoot)+"; & "+args.map(q).join(' ')+
   "; if ($LASTEXITCODE -ne 0) { Write-Host ('Build failed: ' + $LASTEXITCODE) -ForegroundColor Red }";
 }
 async function persist(){
- try{await fetch('/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bbox,copyTo:copyTo.value.trim(),at5Prefix:mapName.value.trim(),imcExe:imcExePath,templateSap:imcTemplatePath})})}catch(e){}
+ try{await fetch('/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bbox,copyTo:copyTo.value.trim(),at5Prefix:mapName.value.trim(),imcExe:imcExePath,templateSap:imcTemplatePath,baseMap:baseMapBox.value,zoom:Number(mapZoomBox.value),lakeContours:lakeContoursBox.checked})})}catch(e){}
 }
 // Enter確定時に入力範囲を地図へ反映する。Shift+Enterは改行。
 box.addEventListener('keydown',e=>{
@@ -164,6 +210,10 @@ document.getElementById('browseOutput').onclick=async()=>{
  }catch(e){status(String(e))}
 };
 mapName.oninput=()=>{updateCommand();persist()};
+baseMapBox.onchange=()=>{refreshMapLayers();updateCommand();persist()};
+lakeContoursBox.onchange=()=>{refreshMapLayers();updateCommand();persist()};
+mapZoomBox.onchange=()=>{refreshMapLayers();updateCommand();persist()};
+refreshMapLayers();
 document.getElementById('imcSettings').onclick=()=>{imcPath.value=imcExePath;imcPathError.textContent='';imcDialog.showModal()};
 document.getElementById('browseImc').onclick=async()=>{
  try{
@@ -198,14 +248,14 @@ document.getElementById('runPowerShell').onclick=async()=>{
  if(!imc){imcDialog.showModal();return}
  if(name&&!/^[A-Za-z0-9-]{1,32}$/.test(name)){status('AT5名の先頭文字は半角英数字とハイフンで入力してください。');return}
  if(!command){status('PowerShellコマンドを確認してください。');return}
- try{const r=await fetch('/powershell',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bbox:a,copyTo:dest,at5Prefix:name,imcExe:imc,command})});const j=await r.json();if(!r.ok)throw Error(j.error||'PowerShellを起動できません');await persist();running=true;document.getElementById('runPowerShell').disabled=true;status(j.message);poll()}catch(e){status(String(e))}
+ try{const r=await fetch('/powershell',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bbox:a,copyTo:dest,at5Prefix:name,imcExe:imc,command,baseMap:baseMapBox.value,zoom:Number(mapZoomBox.value),lakeContours:lakeContoursBox.checked})});const j=await r.json();if(!r.ok)throw Error(j.error||'PowerShellを起動できません');await persist();running=true;document.getElementById('runPowerShell').disabled=true;status(j.message);poll()}catch(e){status(String(e))}
 };
 async function poll(){
  try{const r=await fetch('/log');const j=await r.json();
  if(j.running){setTimeout(poll,1200)}else{running=false;document.getElementById('runPowerShell').disabled=false;status(j.result||'処理が終了しました。ログを確認してください。')}
  }catch(e){setTimeout(poll,2000)}
 }
-(async()=>{try{const s=await (await fetch('/state')).json();copyTo.value=s.copyTo||copyTo.value;mapName.value=s.at5Prefix||'';imcExePath=s.imcExe||'';imcTemplatePath=s.templateSap||'';imcStatus.textContent=s.imcValid?'IMC設定済み':'IMC設定を確認してください';setBox(s.bbox||[35.140,139.130,35.330,139.590],false,true);status('範囲を読み込みました。地図はドラッグで移動できます。');if(!s.imcValid)imcDialog.showModal()}catch(e){setBox([35.140,139.130,35.330,139.590],false,true);imcStatus.textContent='IMC未設定';imcDialog.showModal();status('既定の範囲を表示しています。')}})();
+(async()=>{try{const s=await (await fetch('/state')).json();copyTo.value=s.copyTo||copyTo.value;mapName.value=s.at5Prefix||'';baseMapBox.value=s.baseMap||'standard';mapZoomBox.value=String(s.zoom||15);lakeContoursBox.checked=Boolean(s.lakeContours);refreshMapLayers();imcExePath=s.imcExe||'';imcTemplatePath=s.templateSap||'';imcStatus.textContent=s.imcValid?'IMC設定済み':'IMC設定を確認してください';setBox(s.bbox||[35.140,139.130,35.330,139.590],false,true);status('範囲を読み込みました。地図はドラッグで移動できます。');if(!s.imcValid)imcDialog.showModal()}catch(e){setBox([35.140,139.130,35.330,139.590],false,true);imcStatus.textContent='IMC未設定';imcDialog.showModal();status('既定の範囲を表示しています。')}})();
 </script>
 </body>
 </html>
@@ -228,13 +278,16 @@ class AppState:
                       "copyTo": data.get("copyTo", DEFAULT_COPY_TO),
                       "at5Prefix": data.get("at5Prefix", ""),
                       "imcExe": data.get("imcExe", DEFAULT_IMC_EXE),
-                      "templateSap": data.get("templateSap", "")}
+                      "templateSap": data.get("templateSap", ""),
+                      "baseMap": data.get("baseMap", DEFAULT_BASE_MAP),
+                      "zoom": data.get("zoom", DEFAULT_ZOOM),
+                      "lakeContours": data.get("lakeContours", DEFAULT_LAKE_CONTOURS)}
             exe = Path(str(result["imcExe"]).strip()) if result["imcExe"] else None
             template = Path(str(result["templateSap"]).strip()) if result["templateSap"] else None
             result["imcValid"] = bool(exe and exe.is_file() and template and template.is_file())
             return result
         except (OSError, ValueError, TypeError):
-            return {"bbox": DEFAULT_BBOX, "copyTo": DEFAULT_COPY_TO, "at5Prefix": "", "imcExe": DEFAULT_IMC_EXE, "templateSap": ""}
+            return {"bbox": DEFAULT_BBOX, "copyTo": DEFAULT_COPY_TO, "at5Prefix": "", "imcExe": DEFAULT_IMC_EXE, "templateSap": "", "baseMap": DEFAULT_BASE_MAP, "zoom": DEFAULT_ZOOM, "lakeContours": DEFAULT_LAKE_CONTOURS}
 
     # 範囲や出力先、IMCの場所を検証してユーザー設定へ保存する。
     def save(self, data):
@@ -244,9 +297,17 @@ class AppState:
         previous = self.read_saved()
         imc_exe = str(data.get("imcExe", previous.get("imcExe", DEFAULT_IMC_EXE))).strip()
         template_sap = str(data.get("templateSap", previous.get("templateSap", ""))).strip()
+        base_map = str(data.get("baseMap", previous.get("baseMap", DEFAULT_BASE_MAP)))
+        zoom = int(data.get("zoom", previous.get("zoom", DEFAULT_ZOOM)))
+        lake_contours = bool(data.get("lakeContours", previous.get("lakeContours", DEFAULT_LAKE_CONTOURS)))
+        if base_map not in ("standard", "aerial"):
+            raise ValueError("背景地図は標準地図または航空写真を指定してください")
+        if zoom not in (15, 16, 17):
+            raise ValueError("ズームレベルは15～17から選択してください")
         STATE_DIR.mkdir(parents=True, exist_ok=True)
         saved = {"bbox": bbox, "copyTo": copy_to, "at5Prefix": at5_prefix,
-                 "imcExe": imc_exe, "templateSap": template_sap}
+                 "imcExe": imc_exe, "templateSap": template_sap,
+                 "baseMap": base_map, "zoom": zoom, "lakeContours": lake_contours}
         STATE_FILE.write_text(json.dumps(saved, ensure_ascii=False, indent=2), encoding="utf-8")
         return saved
 
@@ -274,6 +335,11 @@ class AppState:
             bbox = validate_bbox(data.get("bbox"))
             copy_to = str(data.get("copyTo", "")).strip()
             at5_prefix = validate_at5_prefix(data.get("at5Prefix", ""))
+            base_map = str(data.get("baseMap", DEFAULT_BASE_MAP))
+            zoom = int(data.get("zoom", DEFAULT_ZOOM))
+            lake_contours = bool(data.get("lakeContours", DEFAULT_LAKE_CONTOURS))
+            if base_map not in ("standard", "aerial") or zoom not in (15, 16, 17):
+                raise ValueError("背景地図またはズームレベルの指定が不正です")
             saved = self.read_saved()
             imc_exe = Path(str(data.get("imcExe") or saved.get("imcExe", "")).strip()).expanduser()
             template_sap = Path(str(saved.get("templateSap", "")).strip()) if saved.get("templateSap") else None
@@ -288,7 +354,8 @@ class AppState:
             if not BUILDER.is_file():
                 raise FileNotFoundError(f"Buildスクリプトがありません: {BUILDER}")
             self.save({"bbox": bbox, "copyTo": copy_to, "at5Prefix": at5_prefix,
-                       "imcExe": str(imc_exe), "templateSap": str(template_sap)})
+                       "imcExe": str(imc_exe), "templateSap": str(template_sap),
+                       "baseMap": base_map, "zoom": zoom, "lakeContours": lake_contours})
             self.running = True
             self.log = ""
             self.result = "Buildを実行中です"
@@ -298,9 +365,11 @@ class AppState:
             command = [
                 sys.executable, str(BUILDER),
                 "--bbox", *[str(v) for v in bbox],
+                "--zoom", str(zoom), "--base-map", base_map,
+                *(["--lake-contours"] if lake_contours else []),
                 "--imc-exe", str(imc_exe),
                 "--template-sap", str(template_sap),
-                "--output-dir", output_dir_for_bbox(bbox),
+                "--output-dir", output_dir_for_bbox(bbox, base_map, zoom, lake_contours),
                 "--min-resolution", "1",
                 "--max-resolution", "8192",
                 "--filter-alpha", "0",
@@ -356,8 +425,12 @@ class AppState:
             template_sap = find_raster_template(imc_exe)
         if not BUILDER.is_file():
             raise FileNotFoundError(f"Buildスクリプトがありません: {BUILDER}")
+        base_map = str(data.get("baseMap", DEFAULT_BASE_MAP))
+        zoom = int(data.get("zoom", DEFAULT_ZOOM))
+        lake_contours = bool(data.get("lakeContours", DEFAULT_LAKE_CONTOURS))
         self.save({"bbox": bbox, "copyTo": copy_to, "at5Prefix": at5_prefix,
-                   "imcExe": str(imc_exe), "templateSap": str(template_sap)})
+                   "imcExe": str(imc_exe), "templateSap": str(template_sap),
+                   "baseMap": base_map, "zoom": zoom, "lakeContours": lake_contours})
         ps_command = str(data.get("command", "")).strip()
         if not ps_command:
             raise ValueError("PowerShellコマンドが空です")
@@ -379,10 +452,12 @@ class AppState:
 
 state = AppState()
 
-# 座標から再現可能な作業フォルダー名を作る。
-def output_dir_for_bbox(bbox):
+# 地図の種類、ズーム、範囲から再利用時に混ざらない作業フォルダー名を作る。
+def output_dir_for_bbox(bbox, base_map=DEFAULT_BASE_MAP, zoom=DEFAULT_ZOOM,
+                        lake_contours=DEFAULT_LAKE_CONTOURS):
     tag = "-".join(("m" if value < 0 else "p") + f"{round(abs(value) * 1_000_000):09d}" for value in bbox)
-    return f"map-ui-{tag}"
+    source = base_map + ("-lake" if lake_contours else "") + f"-z{zoom}"
+    return f"map-ui-{source}-{tag}"
 
 # 南・西・北・東の順と緯度経度の範囲を検証する。
 def validate_bbox(value):

@@ -108,7 +108,13 @@ def main(argv=None):
                         metavar=("SOUTH", "WEST", "NORTH", "EAST"),
                         help="任意の範囲を指定（南 緯度、西 経度、北 緯度、東 経度）")
     parser.add_argument("--output-dir", type=Path,
-                        help="広域画像の生成先（既存PNGは再利用）")
+                        help="地図画像の生成先（既存PNGは再利用）")
+    parser.add_argument("--zoom", type=int, default=15,
+                        help="地図タイルのズームレベル（標準15）")
+    parser.add_argument("--base-map", choices=("standard", "aerial"), default="standard",
+                        help="背景地図（standard: 標準地図、aerial: 航空写真）")
+    parser.add_argument("--lake-contours", action="store_true",
+                        help="湖沼図（等深線）を背景地図に重ねる")
     parser.add_argument("--margin-nm", type=float, default=0,
                         help="地図範囲の四辺に加える余白（海里、標準0＝現行範囲）")
     parser.add_argument("--template-sap", type=Path,
@@ -146,7 +152,10 @@ def main(argv=None):
         parser.error(f"コピー先フォルダーがありません（SDカード接続・ドライブ文字を確認）: {destination}")
     bbox = args.bbox or (35.140, 139.130, 35.330, 139.590)
     bbox_tag = "-".join(("m" if v < 0 else "p") + f"{round(abs(v)*1_000_000):09d}" for v in bbox)
-    default_output = Path("builds") / f"map-{bbox_tag}"
+    source_tag = "aerial" if args.base_map == "aerial" else "standard"
+    if args.lake_contours:
+        source_tag += "-lake"
+    default_output = Path("builds") / f"map-{source_tag}-z{args.zoom}-{bbox_tag}"
     if args.margin_nm:
         default_output = Path(f"{default_output}-margin-{args.margin_nm:g}nm")
     output_dir = (root / (args.output_dir or default_output)).resolve()
@@ -166,9 +175,14 @@ def main(argv=None):
     raster_command = [
         sys.executable, str(root / "build_map_raster.py"),
         "--max-tiles", str(args.max_tiles),
-        "--margin-nm", str(args.margin_nm), "--out", str(output_dir),
+        "--margin-nm", str(args.margin_nm),
+        "--zoom", str(args.zoom),
+        "--base-map", args.base_map,
+        "--out", str(output_dir),
     ]
     raster_command.extend(["--bbox", *[str(value) for value in bbox]])
+    if args.lake_contours:
+        raster_command.append("--lake-contours")
     run(raster_command, cwd=root)
 
     metadata = json.loads((output_dir / "source-metadata.json").read_text(encoding="utf-8"))
