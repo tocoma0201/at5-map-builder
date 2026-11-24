@@ -126,7 +126,8 @@ function refreshMapLayers(){
   ?'https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg'
   :'https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png';
  const baseName=isAerial?'全国最新写真（シームレス）':'標準地図';
- baseTileLayer=L.tileLayer(baseUrl,{minZoom:isAerial?14:5,maxZoom:18,
+ baseTileLayer=L.tileLayer(baseUrl,{minZoom:5,maxZoom:18,
+  minNativeZoom:isAerial?14:5,maxNativeZoom:18,
   attribution:'地理院タイル（'+baseName+'） | 国土地理院'}).addTo(map);
  if(lakeContoursBox.checked){
   lakeContourLayer=L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/lake1/{z}/{x}/{y}.png',{
