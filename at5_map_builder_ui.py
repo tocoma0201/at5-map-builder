@@ -73,7 +73,7 @@ dialog{border:1px solid #aab6bf;border-radius:8px;width:min(480px,calc(100vw - 3
 </select>
 <label title="等深線は背景画像に焼き込まれるため、魚探で個別に表示・非表示を切り替えられません。Elite Ti2のGenesis LiveはLowranceまたはC-MAPのChart sourceでのみ利用でき、カスタムAT5地図には重ねられません。"><input id="lakeContours" type="checkbox">湖沼図（等深線）を重ねる</label>
 <label for="mapZoom">出力ズームレベル</label>
-<select id="mapZoom">
+<select id="mapZoom" title="ZLを1段上げると、地図の細かさ（地上解像度）は約2倍になります。同じ範囲で必要なタイル数・画像データ量は約4倍が目安です。完成容量は写真の内容や圧縮率で変わります。ブラウザーの表示倍率は変わりません。">
 <option value="15">ZL 15</option>
 <option value="16">ZL 16</option>
 <option value="17">ZL 17</option>
