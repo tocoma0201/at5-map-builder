@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""指定した範囲の地理院標準地図を、IMC用の分割PNG＋KMLに変換する。"""
+"""指定した範囲の地理院タイルから、IMC用の分割PNG＋KMLを作成する。"""
 import argparse
 import json
 import math
@@ -109,12 +109,26 @@ def expand_bbox_nm(bbox, margin_nm):
     return south - lat_pad, west - lon_pad, north + lat_pad, east + lon_pad
 
 
-# 要求範囲、タイル、画像分割情報を再開用マニフェストにまとめる。
-def plan_data(bbox, zoom, chunk_tiles):
+# 地図ソースとズーム範囲を確認し、取得内容をマニフェストに記録する。
+def plan_data(bbox, zoom, chunk_tiles, base_map="standard", lake_contours=False):
+    from map_raster_source import TILE_SOURCES
+
+    if base_map not in ("standard", "aerial"):
+        raise ValueError("--base-map は standard または aerial を指定してください")
+    min_zoom = 14 if base_map == "aerial" else 10
+    if not min_zoom <= zoom <= 18:
+        raise ValueError(f"{base_map} のズームレベルは {min_zoom}～18 で指定してください")
+    if lake_contours and not 11 <= zoom <= 17:
+        raise ValueError("湖沼図（等深線）のズームレベルは11～17です")
+
     coverage, chunks = make_chunks(bbox, zoom, chunk_tiles)
+    base_source = TILE_SOURCES[base_map]
+    overlay_source = TILE_SOURCES["lake_contours"] if lake_contours else None
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "preset": "custom",
+        "base_map": base_map,
+        "lake_contours": lake_contours,
         "zoom": zoom,
         "requested_bbox": list(bbox),
         "chunk_tiles": chunk_tiles,
@@ -123,15 +137,18 @@ def plan_data(bbox, zoom, chunk_tiles):
                        "end": coverage["tile_end"]},
         "chunk_count": len(chunks),
         "chunks": chunks,
-        "attribution": "国土地理院（地理院タイル・標準地図）",
-        "source_url": "https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png",
+        "attribution": "国土地理院（地理院タイル）",
+        "base_source_url": base_source["url"],
+        "overlay_source_url": overlay_source["url"] if overlay_source else None,
     }
 
 
 # 既存マニフェストが今回の生成条件と一致するか比較する。
 def is_same_plan(saved, expected):
-    fields = ("schema_version", "preset", "zoom", "requested_bbox",
-              "chunk_tiles", "tile_count", "tile_range", "chunk_count", "chunks")
+    fields = ("schema_version", "preset", "base_map", "lake_contours",
+              "zoom", "requested_bbox", "chunk_tiles", "tile_count",
+              "tile_range", "chunk_count", "chunks", "base_source_url",
+              "overlay_source_url")
     return all(saved.get(field) == expected.get(field) for field in fields)
 
 
@@ -188,14 +205,24 @@ def generate_images(out, plan, refresh=False, tile_loader=fetch_tile):
                 print("不完全なPNGを再生成:", png.name)
         x1, y1 = chunk["start"]
         x2, y2 = chunk["end"]
-        image = Image.new("RGB", tuple(chunk["pixels"]))
+        image = Image.new("RGBA", tuple(chunk["pixels"]))
         for y in range(y1, y2 + 1):
             for x in range(x1, x2 + 1):
-                tile = tile_loader(plan["zoom"], x, y, cache_dir, refresh)
-                image.paste(tile, ((x - x1) * TILE_SIZE, (y - y1) * TILE_SIZE))
+                offset = ((x - x1) * TILE_SIZE, (y - y1) * TILE_SIZE)
+                base_tile = tile_loader(
+                    plan["zoom"], x, y, cache_dir, refresh,
+                    source=plan["base_map"],
+                )
+                image.alpha_composite(base_tile.convert("RGBA"), dest=offset)
+                if plan["lake_contours"]:
+                    contour_tile = tile_loader(
+                        plan["zoom"], x, y, cache_dir, refresh,
+                        source="lake_contours", optional=True,
+                    )
+                    image.alpha_composite(contour_tile.convert("RGBA"), dest=offset)
         temp = input_dir / (png.stem + ".tmp")
         try:
-            image.save(temp, format="PNG", optimize=True)
+            image.convert("RGB").save(temp, format="PNG", optimize=True)
             temp.replace(png)
         finally:
             if temp.exists():
@@ -219,6 +246,8 @@ def generate_images(out, plan, refresh=False, tile_loader=fetch_tile):
                              encoding="utf-8")
     print("KML:", (input_dir / "map_overlays.kml").resolve())
     print("PGW: PNGごとに同じLatLonBoxから自動生成済み")
+    print(f"地図: {'航空写真' if plan['base_map'] == 'aerial' else '標準地図'}"
+          + (" ＋ 湖沼図（等深線）" if plan["lake_contours"] else ""))
     print("IMC Raster Mode: imc-input をSource Folder、出力フォルダー内のimc-outputをWork Directoryに指定")
     print("このツールはAT5化・SDカードへの書き込みを行いません")
 
@@ -229,6 +258,10 @@ def main(argv=None):
     parser.add_argument("--bbox", nargs=4, type=float, default=DEFAULT_BBOX,
                         metavar=("SOUTH", "WEST", "NORTH", "EAST"))
     parser.add_argument("--zoom", type=int, default=DEFAULT_ZOOM)
+    parser.add_argument("--base-map", choices=("standard", "aerial"), default="standard",
+                        help="背景地図の種類（standard: 標準地図、aerial: 航空写真）")
+    parser.add_argument("--lake-contours", action="store_true",
+                        help="湖沼図（等深線）を背景地図に重ねる")
     parser.add_argument("--chunk-tiles", type=int, default=DEFAULT_CHUNK_TILES)
     parser.add_argument("--out", type=Path, help="別のズーム・設定には別の出力先を使用")
     parser.add_argument("--max-tiles", type=int, default=1000,
@@ -242,19 +275,24 @@ def main(argv=None):
     bbox = expand_bbox_nm(base_bbox, args.margin_nm)
     zoom = args.zoom
     chunk_tiles = args.chunk_tiles
-    plan = plan_data(bbox, zoom, chunk_tiles)
+    plan = plan_data(bbox, zoom, chunk_tiles, args.base_map, args.lake_contours)
     if args.margin_nm:
         plan["margin_nm"] = args.margin_nm
         plan["base_bbox"] = list(base_bbox)
     bbox_tag = "-".join(("m" if v < 0 else "p") + f"{round(abs(v)*1_000_000):09d}" for v in bbox)
-    default_out = Path("builds") / f"map-z{zoom}-{bbox_tag}"
+    map_tag = "aerial" if args.base_map == "aerial" else "standard"
+    if args.lake_contours:
+        map_tag += "-lake"
+    default_out = Path("builds") / f"map-{map_tag}-z{zoom}-{bbox_tag}"
     if args.margin_nm:
         default_out = Path(f"{default_out}-margin-{args.margin_nm:g}nm")
     out = args.out or default_out
     print(f"範囲: {bbox} / ZL{zoom}" + (f"（元範囲から各辺{args.margin_nm:g}海里拡張）" if args.margin_nm else ""))
     print(f"取得タイル: {plan['tile_count']} 枚 / PNG: {plan['chunk_count']} 枚")
     print(f"保存先: {out.resolve()}")
-    print("出典: 国土地理院（地理院タイル）")
+    print("出典: 国土地理院（地理院タイル："
+          + ("全国最新写真（シームレス）" if plan["base_map"] == "aerial" else "標準地図")
+          + ("、湖沼図" if plan["lake_contours"] else "") + "）")
     for chunk in plan["chunks"]:
         print(f"  {chunk['png']}: {chunk['pixels'][0]}x{chunk['pixels'][1]} px ({chunk['tiles']}タイル)")
     if args.max_tiles < 1:

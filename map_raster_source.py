@@ -12,7 +12,23 @@ from pathlib import Path
 from xml.sax.saxutils import escape
 
 TILE_SIZE = 256
-BASE_URL = "https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png"
+TILE_SOURCES = {
+    "standard": {
+        "name": "標準地図",
+        "url": "https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png",
+        "extension": "png",
+    },
+    "aerial": {
+        "name": "全国最新写真（シームレス）",
+        "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
+        "extension": "jpg",
+    },
+    "lake_contours": {
+        "name": "湖沼図（等深線）",
+        "url": "https://cyberjapandata.gsi.go.jp/xyz/lake1/{z}/{x}/{y}.png",
+        "extension": "png",
+    },
+}
 
 
 # Web Mercatorの経緯度をワールドピクセル座標へ変換する。
@@ -61,19 +77,22 @@ def make_plan(bbox, zoom):
 
 
 # 地理院タイルをキャッシュから再利用するか、通信して取得する。
-def fetch_tile(z, x, y, cache_dir, refresh=False):
+def fetch_tile(z, x, y, cache_dir, refresh=False, source="standard", optional=False):
     from PIL import Image  # Pillowはダウンロード処理実行時だけ必要
 
-    tile = cache_dir / str(z) / str(x) / f"{y}.png"
+    if source not in TILE_SOURCES:
+        raise ValueError(f"未対応の地図タイルです: {source}")
+    source_info = TILE_SOURCES[source]
+    tile = cache_dir / source / str(z) / str(x) / f"{y}.{source_info['extension']}"
     if tile.is_file() and not refresh:
         try:
             with Image.open(tile) as img:
                 img.load()
                 if img.size == (TILE_SIZE, TILE_SIZE):
-                    return img.convert("RGB")
+                    return img.convert("RGBA")
         except (OSError, ValueError):
             print("キャッシュを再取得:", tile)
-    url = BASE_URL.format(z=z, x=x, y=y)
+    url = source_info["url"].format(z=z, x=x, y=y)
     req = urllib.request.Request(
         url, headers={
             "User-Agent": "AT5MapBuilder/1.0",
@@ -82,13 +101,31 @@ def fetch_tile(z, x, y, cache_dir, refresh=False):
     )
     for attempt in range(2):
         try:
-            with urllib.request.urlopen(req, timeout=25) as response:
-                data = response.read()
+            try:
+                with urllib.request.urlopen(req, timeout=25) as response:
+                    data = response.read()
+            except urllib.error.HTTPError as exc:
+                # 湖沼図は整備された湖の範囲外ではタイルがないため透明で扱う。
+                if optional and exc.code == 404:
+                    result = Image.new("RGBA", (TILE_SIZE, TILE_SIZE), (0, 0, 0, 0))
+                    tile.parent.mkdir(parents=True, exist_ok=True)
+                    result.save(tile, format="PNG")
+                    return result
+                # 航空写真が未提供の場所は、プレビューと同じ標準地図で補う。
+                if source == "aerial" and exc.code == 404:
+                    print(f"航空写真タイルなし。標準地図で補います: z{z}/x{x}/y{y}")
+                    result = fetch_tile(
+                        z, x, y, cache_dir, refresh, source="standard"
+                    )
+                    tile.parent.mkdir(parents=True, exist_ok=True)
+                    result.convert("RGB").save(tile, format="JPEG", quality=95)
+                    return result
+                raise
             with Image.open(io.BytesIO(data)) as img:
                 img.load()
                 if img.size != (TILE_SIZE, TILE_SIZE):
                     raise ValueError(f"画像サイズが不正: {img.size}")
-                result = img.convert("RGB")
+                result = img.convert("RGBA")
             tile.parent.mkdir(parents=True, exist_ok=True)
             tile.write_bytes(data)
             time.sleep(0.15)  # 連続アクセスを抑える
