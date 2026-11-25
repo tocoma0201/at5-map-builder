@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""地理院XYZタイルの取得と座標計算に使う共通関数。"""
+"""XYZ地図タイルの取得と座標計算に使う共通関数。"""
 import argparse
 import io
 import json
@@ -86,7 +86,7 @@ def make_plan(bbox, zoom):
     }
 
 
-# 地理院タイルをキャッシュから再利用するか、通信して取得する。
+# 地図タイルをキャッシュから再利用するか、通信して取得する。
 def fetch_tile(z, x, y, cache_dir, refresh=False, source="standard", optional=False):
     from PIL import Image  # Pillowはダウンロード処理実行時だけ必要
 
