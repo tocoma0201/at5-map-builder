@@ -177,9 +177,11 @@ function areaKm2(a){const r=6371,rad=Math.PI/180;return r*r*(a[3]-a[1])*rad*(Mat
 function updateEstimate(){
  if(!bbox)return;
  const reference=areaKm2([35.140,139.130,35.330,139.590]);
- const mib=Math.round(870*areaKm2(bbox)/reference), mb=Math.round(mib*1.048576);
+ const zoom=Number(mapZoomBox.value);
+ const zoomFactor=4**(zoom-15);
+ const mib=Math.round(870*areaKm2(bbox)/reference*zoomFactor), mb=Math.round(mib*1.048576);
  const el=document.getElementById('estimate');el.className='note '+(mb<=1000?'good':'warning');
- el.textContent=`範囲面積 約${Math.round(areaKm2(bbox))} km² / AT5概算 約${mib} MiB（${mb} MB）。目安は1,000 MB以内。地図の内容や分割で実サイズは変わります。`;
+ el.textContent=`範囲面積 約${Math.round(areaKm2(bbox))} km² / ZL${zoom}のAT5概算 約${mib} MiB（${mb} MB）。目安は1,000 MB以内。実サイズは地図の内容や圧縮率で変わります。`;
 }
 // 現在の入力値からPowerShellコマンド欄を再生成する。
 function updateCommand(){
@@ -215,7 +217,7 @@ document.getElementById('browseOutput').onclick=async()=>{
 mapName.oninput=()=>{updateCommand();persist()};
 baseMapBox.onchange=()=>{refreshMapLayers();updateCommand();persist()};
 lakeContoursBox.onchange=()=>{refreshMapLayers();updateCommand();persist()};
-mapZoomBox.onchange=()=>{refreshMapLayers();updateCommand();persist()};
+mapZoomBox.onchange=()=>{refreshMapLayers();updateCommand();updateEstimate();persist()};
 refreshMapLayers();
 document.getElementById('imcSettings').onclick=()=>{imcPath.value=imcExePath;imcPathError.textContent='';imcDialog.showModal()};
 document.getElementById('browseImc').onclick=async()=>{
