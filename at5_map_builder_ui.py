@@ -10,6 +10,7 @@ import os
 import subprocess
 import sys
 import threading
+import uuid
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -274,6 +275,7 @@ class AppState:
         self.running = False
         self.log = ""
         self.result = ""
+        self.run_id = None
 
     # 前回の入力値を設定ファイルから読み込み、未設定項目は既定値で補う。
     def read_saved(self):
@@ -408,7 +410,7 @@ class AppState:
         threading.Thread(target=worker, daemon=True).start()
 
     # 編集済みのPowerShellコマンドを別ウィンドウで実行する。
-    def launch_powershell(self, data):
+    def launch_powershell(self, data, completion_url):
         if os.name != "nt":
             raise RuntimeError("PowerShell実行ボタンはWindows上で起動した場合に使えます")
         with self.lock:
@@ -439,21 +441,73 @@ class AppState:
         ps_command = str(data.get("command", "")).strip()
         if not ps_command:
             raise ValueError("PowerShellコマンドが空です")
-        proc = subprocess.Popen(
-            ["powershell.exe", "-NoExit", "-Command", ps_command],
-            cwd=ROOT, creationflags=subprocess.CREATE_NEW_CONSOLE,
-        )
+
+        # Buildの終了コードにかかわらず、finallyからUIへ完了を通知する。
+        run_id = uuid.uuid4().hex
+        safe_url = completion_url.replace("'", "''")
+        wrapped_command = f"""
+$__at5BuildExitCode = 0
+try {{
+{ps_command}
+    if ($null -ne $LASTEXITCODE) {{ $__at5BuildExitCode = [int]$LASTEXITCODE }}
+}} catch {{
+    $__at5BuildExitCode = 1
+    Write-Error $_
+}} finally {{
+    try {{
+        $body = @{{ runId = '{run_id}'; exitCode = $__at5BuildExitCode }} | ConvertTo-Json -Compress
+        Invoke-RestMethod -Uri '{safe_url}' -Method Post -ContentType 'application/json' -Body $body | Out-Null
+    }} catch {{
+        Write-Host 'UIへのBuild完了通知に失敗しました。'
+    }}
+}}
+"""
         with self.lock:
             self.running = True
+            self.run_id = run_id
             self.log = ""
-            self.result = "別ウィンドウのPowerShellで実行中です"
-        # PowerShellの終了を待ち、実行状態を解除する。
-        def wait_for_powershell():
-            code = proc.wait()
+            self.result = "Buildを実行中です。詳細はPowerShellで確認できます。"
+        try:
+            proc = subprocess.Popen(
+                ["powershell.exe", "-NoExit", "-Command", wrapped_command],
+                cwd=ROOT, creationflags=subprocess.CREATE_NEW_CONSOLE,
+            )
+        except Exception:
             with self.lock:
-                self.running = False
-                self.result = "PowerShellを閉じました。実行結果はPowerShell側で確認してください。"
+                if self.run_id == run_id:
+                    self.running = False
+                    self.run_id = None
+                    self.result = "PowerShellを起動できませんでした。"
+            raise
+
+        # 通知が届かずにPowerShellが閉じた場合も、UIの実行中状態を解除する。
+        def wait_for_powershell():
+            proc.wait()
+            with self.lock:
+                if self.running and self.run_id == run_id:
+                    self.running = False
+                    self.run_id = None
+                    self.result = "PowerShellが終了しました。実行結果を確認してください。"
         threading.Thread(target=wait_for_powershell, daemon=True).start()
+
+    # UIから届いたBuild完了通知を、現在の実行に限って反映する。
+    def finish_powershell(self, data):
+        run_id = str(data.get("runId", ""))
+        try:
+            exit_code = int(data.get("exitCode", 1))
+        except (TypeError, ValueError):
+            exit_code = 1
+        with self.lock:
+            if not self.running or run_id != self.run_id:
+                return False
+            self.running = False
+            self.run_id = None
+            self.result = (
+                "Buildが完了しました。PowerShellで結果を確認できます。"
+                if exit_code == 0
+                else "Buildに失敗しました。PowerShellで詳細を確認してください。"
+            )
+            return True
 
 state = AppState()
 
@@ -580,8 +634,12 @@ class Handler(BaseHTTPRequestHandler):
                 state.start_build(data)
                 self.send_json(202, {"started": True})
             elif path == "/powershell":
-                state.launch_powershell(data)
-                self.send_json(202, {"started": True, "message": "PowerShellを別ウィンドウで開きました。実行結果はPowerShell側で確認できます。"})
+                completion_url = f"http://127.0.0.1:{self.server.server_port}/build-finished"
+                state.launch_powershell(data, completion_url)
+                self.send_json(202, {"started": True, "message": "Buildを実行中です。詳細はPowerShellで確認できます。"})
+            elif path == "/build-finished":
+                accepted = state.finish_powershell(data)
+                self.send_json(200, {"accepted": accepted})
             else:
                 self.send_error(404)
         except Exception as exc:
