@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""指定した範囲の地理院タイルから、IMC用の分割PNG＋KMLを作成する。"""
+"""指定した範囲の地図タイルから、IMC用の分割PNG＋KMLを作成する。"""
 import argparse
 import json
 import math
