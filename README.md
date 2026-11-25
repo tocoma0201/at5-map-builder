@@ -60,7 +60,7 @@ Ti2のChart source一覧から「KanagawaNanbu」を選んで表示した例で�
 ![Elite Ti2でZL17の地図を表示](docs/images/ti2-zl17-chart-source.jpg)
 
 
-### USGS航空写真（試験対応）
+## USGS航空写真の試験対応
 
 背景地図に「USGS航空写真」を選ぶと、USGS The National MapのUSGS Imagery Onlyタイルを利用します。高解像度の航空写真は主に米国本土を対象とし、地域により画像の解像度や撮影時期が異なります。アラスカなどでは解像度が低く、米国外では詳細な航空写真が利用できない場合があります。
 
