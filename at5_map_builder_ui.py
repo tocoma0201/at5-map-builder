@@ -47,7 +47,7 @@ aside{padding:14px;border-right:1px solid #ccd4da;overflow:auto}
 label{display:block;font-weight:600;margin:11px 0 4px}
 input,textarea,button,select{font:inherit;padding:8px;border:1px solid #aab6bf;border-radius:5px;width:100%}
 input[type=checkbox]{width:auto;vertical-align:middle;margin-right:6px}
-textarea{height:62px;resize:vertical} button{cursor:pointer;background:#eef4f7}
+textarea{height:62px;resize:vertical} button{cursor:pointer;background:#eef4f7} button:disabled{opacity:.55;cursor:not-allowed;background:#a9b4bb;color:#f7fafb;border-color:#a9b4bb}
 .map-option{margin:8px 0}.map-option label{margin-top:8px}.map-option .note{margin:4px 0}
 .path-picker{display:flex;gap:6px}.path-picker input{flex:1;min-width:0}.path-picker button{width:auto;white-space:nowrap}
 .actions{display:flex;gap:8px;margin-top:8px}.actions button{flex:1}
@@ -167,7 +167,7 @@ function setBox(a,save=true,fitMap=false){
  if(save) persist();
 }
 function parseBox(s){const parts=s.trim().split(/[\s,，]+/).filter(Boolean);if(parts.length!==4)return [];return parts.map(Number)}
-function status(s){document.getElementById('status').textContent=s}
+function status(s,force=false){if(running&&!force)return;document.getElementById('status').textContent=s}
 function outputTag(a){return a.map(x=>(x<0?'m':'p')+String(Math.round(Math.abs(x)*1000000)).padStart(9,'0')).join('-')}
 function outputDirectory(a){
  const source=baseMapBox.value+(lakeContoursBox.checked?'-lake':'')+'-z'+mapZoomBox.value;
@@ -262,6 +262,18 @@ async function poll(){
  }catch(e){setTimeout(poll,2000)}
 }
 (async()=>{try{const s=await (await fetch('/state')).json();copyTo.value=s.copyTo||copyTo.value;mapName.value=s.at5Prefix||'';baseMapBox.value=s.baseMap||'standard';mapZoomBox.value=String(s.zoom||15);lakeContoursBox.checked=Boolean(s.lakeContours);refreshMapLayers();imcExePath=s.imcExe||'';imcTemplatePath=s.templateSap||'';imcStatus.textContent=s.imcValid?'IMC設定済み':'IMC設定を確認してください';setBox(s.bbox||[35.140,139.130,35.330,139.590],false,true);status('範囲を読み込みました。地図はドラッグで移動できます。');if(!s.imcValid)imcDialog.showModal()}catch(e){setBox([35.140,139.130,35.330,139.590],false,true);imcStatus.textContent='IMC未設定';imcDialog.showModal();status('既定の範囲を表示しています。')}})();
+async function restoreBuildStatus(){
+ try{
+  const j=await (await fetch('/log')).json();
+  if(j.running){
+   running=true;
+   document.getElementById('runPowerShell').disabled=true;
+   status('Buildを実行中です。詳細はPowerShellで確認できます。',true);
+   poll();
+  }
+ }catch(e){}
+}
+restoreBuildStatus();
 </script>
 </body>
 </html>
