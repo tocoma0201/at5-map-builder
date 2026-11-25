@@ -116,8 +116,11 @@ def plan_data(bbox, zoom, chunk_tiles, base_map="standard", lake_contours=False)
     if base_map not in ("standard", "aerial", "usgs_imagery"):
         raise ValueError("--base-map は standard、aerial、usgs_imagery のいずれかを指定してください")
     min_zoom = 14 if base_map == "aerial" else 10
-    if not min_zoom <= zoom <= 18:
-        raise ValueError(f"{base_map} のズームレベルは {min_zoom}～18 で指定してください")
+    max_zoom = 16 if base_map == "usgs_imagery" else 18
+    if not min_zoom <= zoom <= max_zoom:
+        raise ValueError(
+            f"{base_map} のズームレベルは {min_zoom}～{max_zoom} で指定してください"
+        )
     if lake_contours and not 11 <= zoom <= 17:
         raise ValueError("湖沼図（等深線）のズームレベルは11～17です")
 
