@@ -111,8 +111,8 @@ def main(argv=None):
                         help="地図画像の生成先（既存PNGは再利用）")
     parser.add_argument("--zoom", type=int, default=15,
                         help="地図タイルのズームレベル（標準15）")
-    parser.add_argument("--base-map", choices=("standard", "aerial"), default="standard",
-                        help="背景地図（standard: 標準地図、aerial: 航空写真）")
+    parser.add_argument("--base-map", choices=("standard", "aerial", "usgs_imagery"), default="standard",
+                        help="背景地図（standard: 標準地図、aerial: 国土地理院航空写真、usgs_imagery: USGS航空写真）")
     parser.add_argument("--lake-contours", action="store_true",
                         help="湖沼図（等深線）を背景地図に重ねる")
     parser.add_argument("--margin-nm", type=float, default=0,
@@ -152,7 +152,7 @@ def main(argv=None):
         parser.error(f"コピー先フォルダーがありません（SDカード接続・ドライブ文字を確認）: {destination}")
     bbox = args.bbox or (35.140, 139.130, 35.330, 139.590)
     bbox_tag = "-".join(("m" if v < 0 else "p") + f"{round(abs(v)*1_000_000):09d}" for v in bbox)
-    source_tag = "aerial" if args.base_map == "aerial" else "standard"
+    source_tag = args.base_map
     if args.lake_contours:
         source_tag += "-lake"
     default_output = Path("builds") / f"map-{source_tag}-z{args.zoom}-{bbox_tag}"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""地理院XYZタイルの取得と座標計算に使う共通関数。"""
+"""XYZ地図タイルの取得と座標計算に使う共通関数。"""
 import argparse
 import io
 import json
@@ -17,11 +17,21 @@ TILE_SOURCES = {
         "name": "標準地図",
         "url": "https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png",
         "extension": "png",
+        "attribution": "国土地理院（地理院タイル）",
     },
     "aerial": {
         "name": "全国最新写真（シームレス）",
         "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
         "extension": "jpg",
+        "attribution": "地理院タイル（全国最新写真・シームレス） | 国土地理院",
+    },
+    "usgs_imagery": {
+        "name": "USGS Imagery Only",
+        # ArcGISタイルAPIは /z/row/column の順で指定する。
+        "url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}",
+        # 画像形式がタイルごとに異なるため、形式に依存しない拡張子で保存する。
+        "extension": "tile",
+        "attribution": "USDA, USGS The National Map: Orthoimagery",
     },
     "lake_contours": {
         "name": "湖沼図（等深線）",
@@ -76,7 +86,7 @@ def make_plan(bbox, zoom):
     }
 
 
-# 地理院タイルをキャッシュから再利用するか、通信して取得する。
+# 地図タイルをキャッシュから再利用するか、通信して取得する。
 def fetch_tile(z, x, y, cache_dir, refresh=False, source="standard", optional=False):
     from PIL import Image  # Pillowはダウンロード処理実行時だけ必要
 
@@ -132,7 +142,7 @@ def fetch_tile(z, x, y, cache_dir, refresh=False, source="standard", optional=Fa
             return result
         except (OSError, ValueError, urllib.error.URLError) as exc:
             if attempt:
-                raise RuntimeError(f"地理院タイルの取得に失敗: {url} ({exc})") from exc
+                raise RuntimeError(f"地図タイルの取得に失敗: {url} ({exc})") from exc
             time.sleep(1.5)
 
 

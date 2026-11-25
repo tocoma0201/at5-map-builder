@@ -70,7 +70,8 @@ dialog{border:1px solid #aab6bf;border-radius:8px;width:min(480px,calc(100vw - 3
 <label for="baseMap">背景地図</label>
 <select id="baseMap">
 <option value="standard">標準地図</option>
-<option value="aerial">航空写真</option>
+<option value="aerial">国土地理院 航空写真</option>
+<option value="usgs_imagery">USGS航空写真</option>
 </select>
 <label title="オンにすると、国土地理院の湖沼図に収録されている湖の等深線が作成する地図に含まれます。湖沼図の等深線は背景地図に焼き込まれるため、魚探上で湖沼図の等深線だけを個別に表示・非表示にはできません。海や未調査の湖沼の等深線は含まれません。"><input id="lakeContours" type="checkbox">湖沼図（湖の等深線）を重ねる</label>
 <label for="mapZoom">出力ズームレベル</label>
@@ -123,15 +124,28 @@ function refreshMapLayers(){
  if(baseTileLayer)map.removeLayer(baseTileLayer);
  if(aerialTileLayer)map.removeLayer(aerialTileLayer);
  if(lakeContourLayer)map.removeLayer(lakeContourLayer);
- const isAerial=baseMapBox.value==='aerial';
- const standardUrl='https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png';
- baseTileLayer=L.tileLayer(standardUrl,{minZoom:5,maxZoom:18,
-  attribution:'地理院タイル（標準地図） | 国土地理院'}).addTo(map);
- if(isAerial){
-  aerialTileLayer=L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg',{
-   minZoom:14,maxZoom:18,
-   attribution:'地理院タイル（全国最新写真・シームレス） | 国土地理院'
+ const selected=baseMapBox.value;
+ const zoom17Option=mapZoomBox.querySelector('option[value="17"]');
+ if(zoom17Option)zoom17Option.disabled=selected==='usgs_imagery';
+ if(selected==='usgs_imagery'&&mapZoomBox.value==='17')mapZoomBox.value='16';
+ mapZoomBox.title="ZLを1段上げると、地図の細かさ（地上解像度）は約2倍になります。同じ範囲で必要なタイル数・画像データ量は約4倍が目安です。完成容量は写真の内容や圧縮率で変わります。ブラウザーの表示倍率は変わりません。"+
+  (selected==='usgs_imagery'?' USGS航空写真はZL16までです。ZL17のタイルを取得できない地域があるため選択できません。':'');
+ if(selected==='usgs_imagery'){
+  // USGSキャッシュはArcGISの行・列順で指定し、画像のネイティブ詳細はZL16まで表示する。
+  baseTileLayer=L.tileLayer('https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}',{
+   minZoom:0,maxZoom:18,maxNativeZoom:16,
+   attribution:'USDA, USGS The National Map: Orthoimagery'
   }).addTo(map);
+ }else{
+  const standardUrl='https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png';
+  baseTileLayer=L.tileLayer(standardUrl,{minZoom:5,maxZoom:18,
+   attribution:'地理院タイル（標準地図） | 国土地理院'}).addTo(map);
+  if(selected==='aerial'){
+   aerialTileLayer=L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg',{
+    minZoom:14,maxZoom:18,
+    attribution:'地理院タイル（全国最新写真・シームレス） | 国土地理院'
+   }).addTo(map);
+  }
  }
  if(lakeContoursBox.checked){
   lakeContourLayer=L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/lake1/{z}/{x}/{y}.png',{
@@ -319,10 +333,12 @@ class AppState:
         base_map = str(data.get("baseMap", previous.get("baseMap", DEFAULT_BASE_MAP)))
         zoom = int(data.get("zoom", previous.get("zoom", DEFAULT_ZOOM)))
         lake_contours = bool(data.get("lakeContours", previous.get("lakeContours", DEFAULT_LAKE_CONTOURS)))
-        if base_map not in ("standard", "aerial"):
-            raise ValueError("背景地図は標準地図または航空写真を指定してください")
+        if base_map not in ("standard", "aerial", "usgs_imagery"):
+            raise ValueError("背景地図の指定が不正です")
         if zoom not in (15, 16, 17):
             raise ValueError("ズームレベルは15～17から選択してください")
+        if base_map == "usgs_imagery" and zoom > 16:
+            raise ValueError("USGS航空写真の出力ズームレベルはZL15またはZL16です")
         STATE_DIR.mkdir(parents=True, exist_ok=True)
         saved = {"bbox": bbox, "copyTo": copy_to, "at5Prefix": at5_prefix,
                  "imcExe": imc_exe, "templateSap": template_sap,
@@ -357,8 +373,10 @@ class AppState:
             base_map = str(data.get("baseMap", DEFAULT_BASE_MAP))
             zoom = int(data.get("zoom", DEFAULT_ZOOM))
             lake_contours = bool(data.get("lakeContours", DEFAULT_LAKE_CONTOURS))
-            if base_map not in ("standard", "aerial") or zoom not in (15, 16, 17):
+            if base_map not in ("standard", "aerial", "usgs_imagery") or zoom not in (15, 16, 17):
                 raise ValueError("背景地図またはズームレベルの指定が不正です")
+            if base_map == "usgs_imagery" and zoom > 16:
+                raise ValueError("USGS航空写真の出力ズームレベルはZL15またはZL16です")
             saved = self.read_saved()
             imc_exe = Path(str(data.get("imcExe") or saved.get("imcExe", "")).strip()).expanduser()
             template_sap = Path(str(saved.get("templateSap", "")).strip()) if saved.get("templateSap") else None

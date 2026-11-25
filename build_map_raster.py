@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""指定した範囲の地理院タイルから、IMC用の分割PNG＋KMLを作成する。"""
+"""指定した範囲の地図タイルから、IMC用の分割PNG＋KMLを作成する。"""
 import argparse
 import json
 import math
@@ -113,11 +113,14 @@ def expand_bbox_nm(bbox, margin_nm):
 def plan_data(bbox, zoom, chunk_tiles, base_map="standard", lake_contours=False):
     from map_raster_source import TILE_SOURCES
 
-    if base_map not in ("standard", "aerial"):
-        raise ValueError("--base-map は standard または aerial を指定してください")
+    if base_map not in ("standard", "aerial", "usgs_imagery"):
+        raise ValueError("--base-map は standard、aerial、usgs_imagery のいずれかを指定してください")
     min_zoom = 14 if base_map == "aerial" else 10
-    if not min_zoom <= zoom <= 18:
-        raise ValueError(f"{base_map} のズームレベルは {min_zoom}～18 で指定してください")
+    max_zoom = 16 if base_map == "usgs_imagery" else 18
+    if not min_zoom <= zoom <= max_zoom:
+        raise ValueError(
+            f"{base_map} のズームレベルは {min_zoom}～{max_zoom} で指定してください"
+        )
     if lake_contours and not 11 <= zoom <= 17:
         raise ValueError("湖沼図（等深線）のズームレベルは11～17です")
 
@@ -137,7 +140,7 @@ def plan_data(bbox, zoom, chunk_tiles, base_map="standard", lake_contours=False)
                        "end": coverage["tile_end"]},
         "chunk_count": len(chunks),
         "chunks": chunks,
-        "attribution": "国土地理院（地理院タイル）",
+        "attribution": base_source.get("attribution", "国土地理院（地理院タイル）"),
         "base_source_url": base_source["url"],
         "overlay_source_url": overlay_source["url"] if overlay_source else None,
     }
@@ -246,7 +249,9 @@ def generate_images(out, plan, refresh=False, tile_loader=fetch_tile):
                              encoding="utf-8")
     print("KML:", (input_dir / "map_overlays.kml").resolve())
     print("PGW: PNGごとに同じLatLonBoxから自動生成済み")
-    print(f"地図: {'航空写真' if plan['base_map'] == 'aerial' else '標準地図'}"
+    map_names = {"standard": "標準地図", "aerial": "国土地理院航空写真",
+                 "usgs_imagery": "USGS航空写真"}
+    print(f"地図: {map_names[plan['base_map']]}"
           + (" ＋ 湖沼図（等深線）" if plan["lake_contours"] else ""))
     print("IMC Raster Mode: imc-input をSource Folder、出力フォルダー内のimc-outputをWork Directoryに指定")
     print("このツールはAT5化・SDカードへの書き込みを行いません")
@@ -258,8 +263,8 @@ def main(argv=None):
     parser.add_argument("--bbox", nargs=4, type=float, default=DEFAULT_BBOX,
                         metavar=("SOUTH", "WEST", "NORTH", "EAST"))
     parser.add_argument("--zoom", type=int, default=DEFAULT_ZOOM)
-    parser.add_argument("--base-map", choices=("standard", "aerial"), default="standard",
-                        help="背景地図の種類（standard: 標準地図、aerial: 航空写真）")
+    parser.add_argument("--base-map", choices=("standard", "aerial", "usgs_imagery"), default="standard",
+                        help="背景地図の種類（standard: 標準地図、aerial: 国土地理院航空写真、usgs_imagery: USGS航空写真）")
     parser.add_argument("--lake-contours", action="store_true",
                         help="湖沼図（等深線）を背景地図に重ねる")
     parser.add_argument("--chunk-tiles", type=int, default=DEFAULT_CHUNK_TILES)
