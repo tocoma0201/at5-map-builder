@@ -18,6 +18,14 @@
 
 Ti2のChart source一覧から「KanagawaNanbu」を選んで表示した例です。
 
+### Ti2での航空写真・ZL17地図の表示例
+
+航空写真を背景に選び、ZL17で作成した地図をElite Ti2で表示した例です。地図名「Hiratsuka17Pic」で航空写真、「Hiratsuka17」でZL17の地図を確認しています。
+
+![Elite Ti2で航空写真を使った地図を表示](docs/images/ti2-aerial-chart-source.jpg)
+
+![Elite Ti2でZL17の地図を表示](docs/images/ti2-zl17-chart-source.jpg)
+
 ## できること
 
 - 地図をドラッグして移動し、必要な範囲を矩形で選択
