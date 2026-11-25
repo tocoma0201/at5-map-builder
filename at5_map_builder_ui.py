@@ -72,7 +72,7 @@ dialog{border:1px solid #aab6bf;border-radius:8px;width:min(480px,calc(100vw - 3
 <option value="standard">標準地図</option>
 <option value="aerial">航空写真</option>
 </select>
-<label title="このチェックボックスをオンにすると、国土地理院の湖沼図に収録されている湖の等深線が作成する地図に含まれます。海の等深線は表示されません。作成したAT5地図を表示している間は、Genesis Liveの等深線を重ねて表示できません。"><input id="lakeContours" type="checkbox">湖沼図（湖の等深線）を重ねる</label>
+<label title="オンにすると、国土地理院の湖沼図に収録されている湖の等深線が作成する地図に含まれます。湖沼図の等深線は背景地図に焼き込まれるため、魚探上で湖沼図の等深線だけを個別に表示・非表示にはできません。海や未調査の湖沼の等深線は含まれません。"><input id="lakeContours" type="checkbox">湖沼図（湖の等深線）を重ねる</label>
 <label for="mapZoom">出力ズームレベル</label>
 <select id="mapZoom" title="ZLを1段上げると、地図の細かさ（地上解像度）は約2倍になります。同じ範囲で必要なタイル数・画像データ量は約4倍が目安です。完成容量は写真の内容や圧縮率で変わります。ブラウザーの表示倍率は変わりません。">
 <option value="15">ZL 15</option>
