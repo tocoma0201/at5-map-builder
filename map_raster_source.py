@@ -17,11 +17,13 @@ TILE_SOURCES = {
         "name": "標準地図",
         "url": "https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png",
         "extension": "png",
+        "attribution": "国土地理院（地理院タイル）",
     },
     "aerial": {
         "name": "全国最新写真（シームレス）",
         "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
         "extension": "jpg",
+        "attribution": "地理院タイル（全国最新写真・シームレス） | 国土地理院",
     },
     "usgs_imagery": {
         "name": "USGS Imagery Only",
@@ -29,6 +31,7 @@ TILE_SOURCES = {
         "url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}",
         # 画像形式がタイルごとに異なるため、形式に依存しない拡張子で保存する。
         "extension": "tile",
+        "attribution": "USDA, USGS The National Map: Orthoimagery",
     },
     "lake_contours": {
         "name": "湖沼図（等深線）",
