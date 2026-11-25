@@ -64,7 +64,7 @@ Ti2のChart source一覧から「KanagawaNanbu」を選んで表示した例で�
 
 背景地図に「USGS航空写真」を選ぶと、USGS The National MapのUSGS Imagery Onlyタイルを利用します。高解像度の航空写真は主に米国本土を対象とし、地域により画像の解像度や撮影時期が異なります。アラスカなどでは解像度が低く、米国外では詳細な航空写真が利用できない場合があります。
 
-USGSサービスの最大表示縮尺はZL16相当です。ZL17を選んでも元画像の情報量が増えるとは限りません。タイルが提供されない範囲ではビルドが失敗することがあります。まず小さな範囲で取得・表示を確認してください。
+USGS航空写真はZL16まで利用できます。ZL17のタイルは取得できない地域があるため、USGSを選んでいる間はZL17を選択できません。タイルが提供されない範囲ではビルドが失敗することがあります。まず小さな範囲で取得・表示を確認してください。
 
 出典：USDA, USGS The National Map: Orthoimagery。詳細は[USGS Imagery Only](https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer)を参照してください。
 
