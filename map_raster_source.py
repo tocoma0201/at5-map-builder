@@ -23,6 +23,13 @@ TILE_SOURCES = {
         "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
         "extension": "jpg",
     },
+    "usgs_imagery": {
+        "name": "USGS Imagery Only",
+        # ArcGISタイルAPIは /z/row/column の順で指定する。
+        "url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}",
+        # 画像形式がタイルごとに異なるため、形式に依存しない拡張子で保存する。
+        "extension": "tile",
+    },
     "lake_contours": {
         "name": "湖沼図（等深線）",
         "url": "https://cyberjapandata.gsi.go.jp/xyz/lake1/{z}/{x}/{y}.png",
@@ -132,7 +139,7 @@ def fetch_tile(z, x, y, cache_dir, refresh=False, source="standard", optional=Fa
             return result
         except (OSError, ValueError, urllib.error.URLError) as exc:
             if attempt:
-                raise RuntimeError(f"地理院タイルの取得に失敗: {url} ({exc})") from exc
+                raise RuntimeError(f"地図タイルの取得に失敗: {url} ({exc})") from exc
             time.sleep(1.5)
 
 
