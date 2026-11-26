@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 14396)
-Total output lines: 807
-
 #!/usr/bin/env python3
 """範囲を選び、AT5地図の作成を実行するローカルブラウザー画面。
 
@@ -191,7 +188,159 @@ function refreshMapLayers(){
  if(selected==='usgs_imagery'&&mapZoomBox.value==='17')mapZoomBox.value='16';
  mapZoomBox.title=t('zoomTip')+(selected==='usgs_imagery'?t('zoomUsgsTip'):'');
  if(selected==='usgs_imagery'){
-  // USGSキャッシュはArcGISの行・列順で指定し…2396 tokens truncated…した座標を使い、画面表示と入力座標のずれを防ぐ。
+  // USGSキャッシュはArcGISの行・列順で指定し、画像のネイティブ詳細はZL16まで表示する。
+  baseTileLayer=L.tileLayer('https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}',{
+   minZoom:0,maxZoom:18,maxNativeZoom:16,noWrap:true,
+   bounds:[[18,-180],[72,-60]],
+   attribution:'USDA, USGS The National Map: Orthoimagery'
+  }).addTo(map);
+ }else{
+  const standardUrl='https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png';
+  baseTileLayer=L.tileLayer(standardUrl,{minZoom:5,maxZoom:18,
+   attribution:'地理院タイル（標準地図） | 国土地理院'}).addTo(map);
+  if(selected==='aerial'){
+   aerialTileLayer=L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg',{
+    minZoom:14,maxZoom:18,
+    attribution:'地理院タイル（全国最新写真・シームレス） | 国土地理院'
+   }).addTo(map);
+  }
+ }
+ if(lakeContoursBox.checked){
+  lakeContourLayer=L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/lake1/{z}/{x}/{y}.png',{
+   minZoom:11,maxZoom:17,opacity:0.9,
+   attribution:'地理院タイル（湖沼図） | 国土地理院'
+  }).addTo(map);
+ }
+ if(lakeContoursBox.checked&&map.getZoom()>17)map.setZoom(17);
+}
+let rect=null, dragStart=null, dragEnd=null, bbox=null, running=false, selectMode=false;
+const box=document.getElementById('bbox'), copyTo=document.getElementById('copyTo'), mapName=document.getElementById('mapName');
+const imcDialog=document.getElementById('imcDialog'), imcPath=document.getElementById('imcPath');
+const imcStatus=document.getElementById('imcStatus'), imcPathError=document.getElementById('imcPathError');
+let imcExePath='', imcTemplatePath='';
+imcPath.addEventListener('paste',e=>{
+ const pasted=e.clipboardData?.getData('text/plain');
+ if(!pasted)return;
+ const trimmed=pasted.trim();
+ const clean=trimmed.length>=2&&trimmed.startsWith('"')&&trimmed.endsWith('"')?trimmed.slice(1,-1):pasted;
+ if(clean!==pasted){e.preventDefault();const start=imcPath.selectionStart,end=imcPath.selectionEnd;imcPath.setRangeText(clean,start,end,'end');imcPath.dispatchEvent(new Event('input',{bubbles:true}))}
+});
+
+// 緯度経度の順序と大小関係を画面側で先に確認する。
+function valid(a){return a.length===4&&a.every(Number.isFinite)&&a[0]<a[2]&&a[1]<a[3]&&a[0]>=-90&&a[2]<=90&&a[1]>=-180&&a[3]<=180}
+// 座標欄、赤い矩形、概算値、コマンドを同じ範囲に揃える。
+function setBox(a,save=true,fitMap=false){
+ if(!valid(a)){status(t('rangeInvalid'));return}
+ bbox=a.map(Number); box.value=bbox.map(x=>x.toFixed(6)).join(', ');
+ status(t('rangeUpdated'));
+ const bounds=[[bbox[0],bbox[1]],[bbox[2],bbox[3]]];
+ if(rect)rect.setBounds(bounds);else rect=L.rectangle(bounds,{color:'#d23636',weight:2,fillOpacity:.10}).addTo(map);
+ if(fitMap)map.fitBounds(bounds,{padding:[12,12]}); updateCommand(); updateEstimate();
+ if(save) persist();
+}
+function parseBox(s){const parts=s.trim().split(/[\s,，]+/).filter(Boolean);if(parts.length!==4)return [];return parts.map(Number)}
+function status(s,force=false){if(running&&!force)return;document.getElementById('status').textContent=s}
+function outputTag(a){return a.map(x=>(x<0?'m':'p')+String(Math.round(Math.abs(x)*1000000)).padStart(9,'0')).join('-')}
+function outputDirectory(a){
+ const source=baseMapBox.value+(lakeContoursBox.checked?'-lake':'')+'-z'+mapZoomBox.value;
+ return 'map-ui-'+source+'-'+outputTag(a);
+}
+function areaKm2(a){const r=6371,rad=Math.PI/180;return r*r*(a[3]-a[1])*rad*(Math.sin(a[2]*rad)-Math.sin(a[0]*rad))}
+// USGS選択時に、保存範囲が米国から大きく外れていないかを確認する。
+function isPlausibleUsgsArea(a){return a[0]>=18&&a[2]<=72&&a[1]>=-180&&a[3]<=-60}
+// 試験済み範囲の実測値を基準に、面積比で容量を概算する。
+function updateEstimate(){
+ if(!bbox)return;
+ const reference=areaKm2([35.140,139.130,35.330,139.590]);
+ const zoom=Number(mapZoomBox.value);
+ const zoomFactor=4**(zoom-15);
+ const mib=Math.round(870*areaKm2(bbox)/reference*zoomFactor), mb=Math.round(mib*1.048576);
+ const el=document.getElementById('estimate');
+ const outsideUsMainland=baseMapBox.value==='usgs_imagery'&&
+  (bbox[0]<24||bbox[2]>50||bbox[1]<-125||bbox[3]>-66);
+ el.className='note '+(outsideUsMainland||mb>1000?'warning':'good');
+ el.textContent=t('estimate',Math.round(areaKm2(bbox)),zoom,mib,mb,outsideUsMainland);
+}
+// 現在の入力値からPowerShellコマンド欄を再生成する。
+function updateCommand(){
+ const a=parseBox(box.value),dest=copyTo.value.trim(),name=mapName.value.trim();
+ if(!valid(a)||!dest||!imcExePath||!imcTemplatePath){commandBox.value='';return}
+ const q=v=>"'"+String(v).replace(/'/g,"''")+"'";
+ const args=[pythonExecutable,toolRoot.replace(/\\/g,'/')+'/build_at5_map.py',
+  '--bbox',...a.map(v=>String(Number(v).toFixed(6))),
+  '--imc-exe',imcExePath,'--template-sap',imcTemplatePath,
+  '--base-map',baseMapBox.value,'--zoom',mapZoomBox.value,
+  '--output-dir',outputDirectory(a),
+  '--min-resolution','1','--max-resolution','8192','--filter-alpha','0','--copy-to',dest];
+ if(lakeContoursBox.checked)args.push('--lake-contours');
+ if(name)args.push('--at5-prefix',name);
+ commandBox.value="Set-Location -LiteralPath "+q(toolRoot)+"; & "+args.map(q).join(' ')+
+  "; if ($LASTEXITCODE -ne 0) { Write-Host ('Build failed: ' + $LASTEXITCODE) -ForegroundColor Red }";
+}
+async function persist(){
+ try{await fetch('/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bbox,copyTo:copyTo.value.trim(),at5Prefix:mapName.value.trim(),imcExe:imcExePath,templateSap:imcTemplatePath,baseMap:baseMapBox.value,zoom:Number(mapZoomBox.value),lakeContours:lakeContoursBox.checked,language})})}catch(e){}
+}
+languageBox.onchange=async()=>{language=languageBox.value==='ja'?'ja':'en';applyLanguage();status(t('rangeUpdated'));await persist()};
+// Enter確定時に入力範囲を地図へ反映する。Shift+Enterは改行。
+box.addEventListener('keydown',e=>{
+ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();setBox(parseBox(box.value),true,true)}
+});
+copyTo.onchange=()=>{updateCommand();persist()};
+document.getElementById('browseOutput').onclick=async()=>{
+ try{
+  const r=await fetch('/select-output-dir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initialDir:copyTo.value.trim()})});
+  const j=await r.json();if(!r.ok)throw Error(j.error||t('folderPickerError'));
+  if(j.path){copyTo.value=j.path;updateCommand();await persist();status(t('outputSaved'))}
+ }catch(e){status(String(e))}
+};
+mapName.oninput=()=>{updateCommand();persist()};
+baseMapBox.onchange=()=>{
+ refreshMapLayers();
+ if(baseMapBox.value==='usgs_imagery'&&bbox&&!isPlausibleUsgsArea(bbox)){
+  setBox(US_DEFAULT_BBOX,true,true);
+  status(t('usgsAreaReset'),true);
+ }else if(bbox){map.invalidateSize(true);map.fitBounds([[bbox[0],bbox[1]],[bbox[2],bbox[3]]],{padding:[12,12]})}
+ updateCommand();updateEstimate();persist()
+};
+lakeContoursBox.onchange=()=>{refreshMapLayers();updateCommand();persist()};
+mapZoomBox.onchange=()=>{refreshMapLayers();updateCommand();updateEstimate();persist()};
+document.getElementById('imcSettings').onclick=()=>{imcPath.value=imcExePath;imcPathError.textContent='';imcDialog.showModal()};
+document.getElementById('browseImc').onclick=async()=>{
+ try{
+  const r=await fetch('/select-imc-exe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initialPath:imcPath.value.trim()||imcExePath})});
+  const j=await r.json();if(!r.ok)throw Error(j.error||t('filePickerError'));
+  if(j.path){imcPath.value=j.path;imcPathError.textContent='';}
+ }catch(e){imcPathError.textContent=String(e)}
+};
+document.getElementById('cancelImc').onclick=()=>imcDialog.close();
+document.getElementById('saveImc').onclick=async()=>{
+ const path=imcPath.value.trim();
+ if(!path){imcPathError.textContent=t('imcPathRequired');return}
+ const button=document.getElementById('saveImc');button.disabled=true;imcPathError.textContent=t('imcChecking');
+ try{
+  const r=await fetch('/imc-settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({imcExe:path})});
+  const j=await r.json();if(!r.ok)throw Error(j.error||t('imcSetError'));
+  imcExePath=j.imcExe;imcTemplatePath=j.templateSap||'';imcStatus.textContent=t('imcValid');imcDialog.close();await persist();updateCommand();status(t('imcSaved'));
+ }catch(e){imcPathError.textContent=String(e)}
+ finally{button.disabled=false}
+};
+document.getElementById('selectMode').onclick=e=>{selectMode=!selectMode;e.currentTarget.textContent=t(selectMode?'selectOn':'selectOff');e.currentTarget.classList.toggle('primary',selectMode);map.dragging[selectMode?'disable':'enable']()};
+// 範囲選択中だけ、地図ドラッグを矩形指定として扱う。
+map.on('mousedown',e=>{if(!selectMode||e.originalEvent.button!==0)return;dragStart=e.latlng;dragEnd=e.latlng;if(rect)map.removeLayer(rect);rect=L.rectangle([dragStart,dragStart],{color:'#d23636',weight:2,fillOpacity:.10}).addTo(map)});
+map.on('mousemove',e=>{if(dragStart&&rect){dragEnd=e.latlng;rect.setBounds(L.latLngBounds(dragStart,dragEnd))}});
+function finishRange(end){
+ if(!dragStart)return;
+ const start=dragStart;dragStart=null;dragEnd=null;
+ const bounds=L.latLngBounds(start,end),sw=bounds.getSouthWest(),ne=bounds.getNorthEast();
+ if(sw.lat===ne.lat||sw.lng===ne.lng)return;
+ const selected=[sw.lat,sw.lng,ne.lat,ne.lng];
+ if(baseMapBox.value==='usgs_imagery'&&!isPlausibleUsgsArea(selected)){
+  status(t('usgsCoordinateMismatch'),true);
+  return;
+ }
+ setBox(selected);
+}
+// 範囲選択はLeafletが変換した座標を使い、画面表示と入力座標のずれを防ぐ。
 map.on('mouseup',e=>finishRange(e.latlng));
 // 地図の外でマウスを離した場合は、地図内で最後に取得した地点を範囲の終点にする。
 document.addEventListener('mouseup',()=>{if(dragStart)finishRange(dragEnd||dragStart)});
