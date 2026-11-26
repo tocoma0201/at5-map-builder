@@ -18,12 +18,14 @@ TILE_SOURCES = {
         "url": "https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png",
         "extension": "png",
         "attribution": "国土地理院（地理院タイル）",
+        "information_url": "https://maps.gsi.go.jp/development/ichiran.html",
     },
     "aerial": {
         "name": "全国最新写真（シームレス）",
         "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
         "extension": "jpg",
         "attribution": "地理院タイル（全国最新写真・シームレス） | 国土地理院",
+        "information_url": "https://maps.gsi.go.jp/development/ichiran.html",
     },
     "usgs_imagery": {
         "name": "USGS Imagery Only",
@@ -32,11 +34,14 @@ TILE_SOURCES = {
         # 画像形式がタイルごとに異なるため、形式に依存しない拡張子で保存する。
         "extension": "tile",
         "attribution": "USDA, USGS The National Map: Orthoimagery",
+        "information_url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer",
     },
     "lake_contours": {
         "name": "湖沼図（等深線）",
         "url": "https://cyberjapandata.gsi.go.jp/xyz/lake1/{z}/{x}/{y}.png",
         "extension": "png",
+        "attribution": "国土地理院（地理院タイル：湖沼図）",
+        "information_url": "https://maps.gsi.go.jp/development/ichiran.html",
     },
 }
 

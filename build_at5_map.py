@@ -64,6 +64,72 @@ def log_tail(path, lines=50):
     print("\n".join(text[-lines:]), file=sys.stderr)
 
 
+# 生成地図に使ったデータの出典と注意事項を、AT5と一緒に保存する。
+def write_source_notice(destination, prefix, metadata):
+    base_name = {
+        "standard": "JP: 国土地理院 / 標準地図",
+        "aerial": "JP: 国土地理院 / 航空写真",
+        "usgs_imagery": "US: USGS / 航空写真",
+    }.get(metadata.get("base_map"), metadata.get("base_map", "不明"))
+    sources = [
+        (base_name, metadata.get("attribution", ""),
+         metadata.get("base_source_information_url", "")),
+    ]
+    if metadata.get("lake_contours"):
+        sources.append(("JP: 国土地理院 / 湖沼図（等深線）",
+                        metadata.get("overlay_attribution", "国土地理院（地理院タイル：湖沼図）"),
+                        metadata.get("overlay_source_information_url", "https://maps.gsi.go.jp/development/ichiran.html")))
+
+    lines = [
+        "地図データの出典・利用上の注意 / Map data sources and use notice",
+        "",
+        f"地図名 / Map name: {prefix or '(未指定 / not specified)'}",
+        f"ビルド日時 UTC / Build generated at UTC: {metadata.get('build_generated_at_utc', '不明 / unknown')}",
+        "（ビルド日時は画像の撮影日やデータ更新日ではありません。）",
+        "(The build timestamp is not the imagery capture date or source-data update date.)",
+        f"範囲（南, 西, 北, 東）/ Bounds (south, west, north, east): {metadata.get('requested_bbox', '不明 / unknown')}",
+        f"出力ズーム / Output zoom: ZL{metadata.get('zoom', '不明 / unknown')}",
+        "",
+        "出典 / Sources:",
+    ]
+    for name, credit, info_url in sources:
+        lines.append(f"- {name}: {credit}")
+        if info_url:
+            lines.append(f"  利用条件・情報 / Terms and information: {info_url}")
+    lines.extend([
+        "",
+        "権利・利用条件 / Rights and terms:",
+        "この記録は出典情報を示すもので、利用許諾や法令上の手続きが不要であることを保証しません。利用者は対象地域・タイルごとの最新の利用条件、必要な申請、出典表示要件を確認してください。",
+        "This notice records the data sources; it does not grant permission or establish legal compliance. The user must check current terms, required permissions, and attribution rules for the relevant area and tiles.",
+        "",
+        "安全・精度 / Safety and accuracy:",
+        "生成地図は正式な航海用海図ではありません。位置・海岸線・水深・障害物の正確性、完全性、最新性、機器との適合性を保証しません。利用者自身が内容と機器上の表示を確認し、航行を含む利用を判断してください。",
+        "Generated maps are not official navigational charts. Accuracy, completeness, currency, or compatibility with any device is not guaranteed. The user must verify the map and its display on the device and decide whether and how to use it, including for navigation.",
+        "",
+        "責任の制限 / Limitation of liability:",
+        "適用法令で認められる範囲で、本ツールの提供者は、生成地図の利用または利用不能から生じる損害について責任を負いません。この記載は、適用法令により制限できない責任を除外するものではありません。",
+        "To the extent permitted by applicable law, the tool's providers disclaim liability for damages arising from use or inability to use generated maps. This does not exclude liability that cannot be limited under applicable law.",
+        "",
+    ])
+    if prefix:
+        filename = f"{prefix}_SOURCE_NOTICES.txt"
+    else:
+        bounds_tag = "-".join(
+            ("m" if value < 0 else "p") + f"{round(abs(value) * 1_000_000):09d}"
+            for value in metadata.get("requested_bbox", [])
+        )
+        filename = (f"{metadata.get('base_map', 'map')}-z{metadata.get('zoom', 'unknown')}"
+                    f"-{bounds_tag}_SOURCE_NOTICES.txt")
+    target = destination / filename
+    temp = target.with_name(target.name + ".tmp")
+    try:
+        temp.write_text("\n".join(lines), encoding="utf-8")
+        temp.replace(target)
+    finally:
+        temp.unlink(missing_ok=True)
+    print(f"出典・注意事項を保存: {target}")
+
+
 # PGWが未回転の6行形式で出力されたことを確認する。
 def validate_pgw(path):
     values = [float(line.strip()) for line in path.read_text(encoding="ascii").splitlines()]
@@ -132,7 +198,7 @@ def main(argv=None):
                         action=argparse.BooleanOptionalAction, default=True,
                         help="IMCの画像境界フィルターを有効化（標準）")
     parser.add_argument("--copy-to", type=Path,
-                        help="Build成功後にAT5だけをコピーするフォルダー")
+                        help="Build成功後にAT5と出典・利用上の注意ファイルをコピーするフォルダー")
     parser.add_argument("--at5-prefix", default="",
                         help="AT5名の先頭文字とTi2用Atlas Description（例: Map01）")
     args = parser.parse_args(argv)
@@ -311,9 +377,12 @@ def main(argv=None):
                 if stale.name not in expected_names:
                     stale.unlink()
                     print(f"旧AT5を置換: {stale.name}")
+        write_source_notice(destination, args.at5_prefix, metadata)
         print(f"コピー完了: {destination}")
     else:
-        print("コピー先は指定されていません。AT5はBuildフォルダー内にあります。")
+        notice_dir = at5_files[0].parent if at5_files else work_dir
+        write_source_notice(notice_dir, args.at5_prefix, metadata)
+        print("コピー先は指定されていません。AT5と出典記録はBuildフォルダー内にあります。")
 
 
 if __name__ == "__main__":

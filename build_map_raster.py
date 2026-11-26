@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """指定した範囲の地図タイルから、IMC用の分割PNG＋KMLを作成する。"""
 import argparse
+from datetime import datetime, timezone
 import json
 import math
 import sys
@@ -142,7 +143,11 @@ def plan_data(bbox, zoom, chunk_tiles, base_map="standard", lake_contours=False)
         "chunks": chunks,
         "attribution": base_source.get("attribution", "国土地理院（地理院タイル）"),
         "base_source_url": base_source["url"],
+        "base_source_information_url": base_source.get("information_url"),
         "overlay_source_url": overlay_source["url"] if overlay_source else None,
+        "overlay_attribution": overlay_source.get("attribution") if overlay_source else None,
+        "overlay_source_information_url": overlay_source.get("information_url") if overlay_source else None,
+        "build_generated_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
 
 
@@ -285,7 +290,8 @@ def main(argv=None):
         plan["margin_nm"] = args.margin_nm
         plan["base_bbox"] = list(base_bbox)
     bbox_tag = "-".join(("m" if v < 0 else "p") + f"{round(abs(v)*1_000_000):09d}" for v in bbox)
-    map_tag = "aerial" if args.base_map == "aerial" else "standard"
+    map_tag = {"aerial": "aerial", "usgs_imagery": "usgs-imagery"}.get(
+        args.base_map, "standard")
     if args.lake_contours:
         map_tag += "-lake"
     default_out = Path("builds") / f"map-{map_tag}-z{zoom}-{bbox_tag}"
