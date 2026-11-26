@@ -16,6 +16,8 @@ from map_raster_source import (
 DEFAULT_BBOX = (35.140, 139.130, 35.330, 139.590)
 DEFAULT_ZOOM = 15
 DEFAULT_CHUNK_TILES = 8
+# USGS航空写真の座標異常をタイル取得前に検出する概略範囲。
+USGS_COORDINATE_BOUNDS = (18.0, -180.0, 72.0, -60.0)
 
 # タイル範囲をIMCの最大画像サイズに合わせて分割する。
 def make_chunks(bbox, zoom, chunk_tiles):
@@ -116,6 +118,14 @@ def plan_data(bbox, zoom, chunk_tiles, base_map="standard", lake_contours=False)
 
     if base_map not in ("standard", "aerial", "usgs_imagery"):
         raise ValueError("--base-map は standard、aerial、usgs_imagery のいずれかを指定してください")
+    if base_map == "usgs_imagery":
+        south, west, north, east = bbox
+        min_lat, min_lon, max_lat, max_lon = USGS_COORDINATE_BOUNDS
+        if south < min_lat or west < min_lon or north > max_lat or east > max_lon:
+            raise ValueError(
+                "USGS航空写真の範囲と座標が一致しません。"
+                "地図上の選択範囲と南・西・北・東の座標を確認してください。"
+            )
     min_zoom = 14 if base_map == "aerial" else 10
     max_zoom = 16 if base_map == "usgs_imagery" else 18
     if not min_zoom <= zoom <= max_zoom:

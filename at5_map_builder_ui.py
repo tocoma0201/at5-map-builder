@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 14396)
+Total output lines: 807
+
 #!/usr/bin/env python3
 """範囲を選び、AT5地図の作成を実行するローカルブラウザー画面。
 
@@ -160,8 +163,8 @@ dialog{border:1px solid #aab6bf;border-radius:8px;width:min(480px,calc(100vw - 3
 // 範囲入力と地図描画の連携を行うクライアント側処理。
 // 翻訳を言語ごとに集約し、対応言語を増やす場合はここへ辞書を追加する。
 const messages={
- ja:{title:'Lowrance魚群探知機用 AT5地図作成ツール',languageLabel:'Language',mapInstructions:'地図は通常ドラッグで移動できます。「範囲選択」をONにした間だけドラッグで範囲を囲めます。座標は「南 西 北 東」の順で入力します。最後に使った範囲は次回も保持されます。',selectOff:'範囲選択: OFF（ドラッグで地図移動）',selectOn:'範囲選択: ON（ドラッグで範囲指定）',baseMapLabel:'背景地図',mapStandard:'JP: 国土地理院 / 標準地図',mapAerial:'JP: 国土地理院 / 航空写真',mapUsgs:'US: USGS / 航空写真',lakeContours:'湖沼図（湖の等深線）を重ねる',lakeContoursTip:'このチェックボックスを入れると、湖沼図の等深線が作成する地図に含まれます。魚探上で湖沼図の等深線だけを個別に表示・非表示にはできません。海や未調査の湖沼の等深線は含まれません。',zoomLabel:'出力ズームレベル',zoomTip:'ZLを1段上げると、地図の細かさ（地上解像度）は約2倍になります。同じ範囲で必要なタイル数・画像データ量は約4倍が目安です。完成容量は写真の内容や圧縮率で変わります。ブラウザーの表示倍率は変わりません。',mapAvailability:'湖沼図は国土地理院が公開する調査済み湖沼の範囲で利用できます。航空写真・湖沼図の取得範囲は地図上で確認してください。',bboxLabel:'範囲（南, 西, 北, 東）',bboxTip:'南, 西, 北, 東の順に入力し、Enterで地図上の選択範囲へ反映します。',mapNameLabel:'Ti2で選ぶ地図名／AT5先頭文字（任意）',outputLabel:'出力先フォルダー',outputTip:'SDカードに保存する場合は、カード直下の ShadedRelief フォルダーを指定してください。PCに保存する場合は任意のフォルダーを指定できます。',browse:'参照…',imcSettings:'IMC設定',checking:'確認中…',imcDialogTitle:'IMCの場所を設定',imcHelp:'「参照…」からInsightMapCreator.exeを選ぶか、エクスプローラーでコピーしたパスを貼り付けてください。Raster Mode設定はmapcreator.zip内のSample ZIPから自動取得します。設定はこのPCに保存され、「IMC設定」からいつでも変更できます。',imcPathLabel:'InsightMapCreator.exeのパス',cancel:'キャンセル',save:'保存',buildNotes:'生成条件：Min 1〜Max 8192 / Filter Alpha 0。容量1,000 MB・タイル数1,000枚は目安です。超えても警告のみで作成を続けます。名前を入力すると、AT5ファイル名の先頭とTi2のChart sourceに使われます。',legalSummary:'出典・安全上の注意',legalBody:'生成地図は正式な航海用海図ではありません。利用前に出典・地域ごとの利用条件と、機器上での表示を確認してください。ビルドで使った出典と注意事項はAT5と一緒に保存されます。',commandLabel:'PowerShellコマンド（編集できます）',runPowerShell:'PowerShellで実行',starting:'起動しています…',windowsOnly:'本ツールはWindows専用です。画面表示は日本語・英語を選べます。ビルドスクリプトのターミナル出力は日本語です。',rangeInvalid:'範囲の数値が不正です。南 西 北 東の順に入力してください。',rangeUpdated:'範囲を更新しました。',estimate:(a,z,m,b,w)=>`範囲面積 約${a} km² / ZL${z}のAT5概算 約${m} MiB（${b} MB）。目安は1,000 MB以内。実サイズは地図の内容や圧縮率で変わります。${w?' 米国本土以外を含む範囲です。USGS航空写真は地域によって高解像度タイルがなく、Buildが失敗する場合があります。':''}`,zoomUsgsTip:' USGS航空写真はZL16までです。ZL17のタイルを取得できない地域があるため選択できません。',outsideUsWarning:'米国本土以外を含む範囲です。USGS航空写真は地域によって高解像度タイルがなく、Buildが失敗する場合があります。',imcValid:'IMC設定済み',imcMissing:'IMC設定を確認してください',imcUnset:'IMC未設定',rangeLoaded:'範囲を読み込みました。地図はドラッグで移動できます。',defaultRange:'既定の範囲を表示しています。',bboxError:'先に正しい範囲を指定してください。',outputMissing:'出力先パスを入力してください。',nameError:'AT5名の先頭文字は半角英数字とハイフンで入力してください。',commandError:'PowerShellコマンドを確認してください。',buildRunning:'Buildを実行中です。詳細はPowerShellで確認できます。',buildDone:'Buildが完了しました。PowerShellで結果を確認できます。',buildFailed:'Buildに失敗しました。PowerShellで詳細を確認してください。',buildEnded:'処理が終了しました。ログを確認してください。',imcPathRequired:'InsightMapCreator.exeのパスを入力してください。',imcChecking:'IMCと付属設定を確認しています…',imcSaved:'IMCの場所を保存しました。',rangeBad:'bboxは南・西・北・東の4数値で指定してください。'},
- en:{title:'AT5 Map Builder for Lowrance Fish Finders',languageLabel:'Language',mapInstructions:'Drag the map to move it. Turn on “Select area” to draw a map area by dragging. Enter coordinates in south, west, north, east order. The last area is restored next time.',selectOff:'Select area: OFF (drag to move map)',selectOn:'Select area: ON (drag to select area)',baseMapLabel:'Base map',mapStandard:'JP: GSI / Standard map',mapAerial:'JP: GSI / Aerial imagery',mapUsgs:'US: USGS / Aerial imagery',lakeContours:'Overlay lake depth contours',lakeContoursTip:'When checked, lake depth contours from GSI lake maps are included in the generated map. They are baked into the map and cannot be toggled independently on the fish finder. Sea contours and unsurveyed lakes are not included.',zoomLabel:'Output zoom level',zoomTip:'Increasing ZL by one doubles ground detail (resolution). For the same area, tile count and image data are roughly four times larger. Final size depends on image content and compression. This does not change the browser zoom.',mapAvailability:'GSI lake maps are available only for surveyed lakes published by GSI. Check the map to see aerial imagery and lake-map coverage.',bboxLabel:'Area (south, west, north, east)',bboxTip:'Enter coordinates in south, west, north, east order. Press Enter to update the selected map area.',mapNameLabel:'Map name on Ti2 / AT5 filename prefix (optional)',outputLabel:'Output folder',outputTip:'For an SD card, select the ShadedRelief folder at the card root. You can choose any folder on your PC.',browse:'Browse...',imcSettings:'IMC settings',checking:'Checking...',imcDialogTitle:'Set IMC location',imcHelp:'Select InsightMapCreator.exe with Browse... or paste its path from File Explorer. Raster Mode settings are found automatically in the Sample ZIP inside mapcreator.zip. The setting is saved on this PC and can be changed here at any time.',imcPathLabel:'InsightMapCreator.exe path',cancel:'Cancel',save:'Save',buildNotes:'Build settings: Min 1 to Max 8192 / Filter Alpha 0. The 1,000 MB and 1,000 tile figures are guidelines; exceeding them shows a warning but does not stop the build. The name is used as the AT5 filename prefix and Ti2 Chart source.',legalSummary:'Sources and safety',legalBody:'Generated maps are not official navigational charts. Check source credits, local terms, and the map display on your device before use. A source and safety notice is saved alongside the AT5 files.',commandLabel:'PowerShell command (editable)',runPowerShell:'Run in PowerShell',starting:'Starting...',windowsOnly:'This tool runs on Windows only. The UI is available in Japanese and English. Build script output in the terminal remains Japanese.',rangeInvalid:'Invalid area coordinates. Enter south, west, north, east.',rangeUpdated:'Area updated.',estimate:(a,z,m,b,w)=>`Area: about ${a} km² / Estimated AT5 size at ZL${z}: about ${m} MiB (${b} MB). Aim for 1,000 MB or less. Actual size varies with map content and compression.${w?' This area includes locations outside the contiguous United States. High-resolution USGS imagery may be unavailable and the build may fail.':''}`,zoomUsgsTip:' USGS imagery supports up to ZL16. ZL17 is unavailable because tiles may not exist in some areas.',outsideUsWarning:'This area includes locations outside the contiguous United States. High-resolution USGS imagery may be unavailable and the build may fail.',imcValid:'IMC configured',imcMissing:'Check IMC settings',imcUnset:'IMC not configured',rangeLoaded:'Area loaded. Drag the map to move it.',defaultRange:'Showing the default area.',bboxError:'Enter a valid area first.',outputMissing:'Enter an output folder.',nameError:'Use ASCII letters, numbers, and hyphens for the AT5 name prefix.',commandError:'Check the PowerShell command.',buildRunning:'Build is running. See PowerShell for details.',buildDone:'Build completed. Check the result in PowerShell.',buildFailed:'Build failed. See PowerShell for details.',buildEnded:'Process ended. Check the log.',imcPathRequired:'Enter the path to InsightMapCreator.exe.',imcChecking:'Checking IMC and its settings...',imcSaved:'IMC location saved.',rangeBad:'Enter four numeric coordinates in south, west, north, east order.'}
+ ja:{title:'Lowrance魚群探知機用 AT5地図作成ツール',languageLabel:'Language',mapInstructions:'地図は通常ドラッグで移動できます。「範囲選択」をONにした間だけドラッグで範囲を囲めます。座標は「南 西 北 東」の順で入力します。最後に使った範囲は次回も保持されます。',selectOff:'範囲選択: OFF（ドラッグで地図移動）',selectOn:'範囲選択: ON（ドラッグで範囲指定）',baseMapLabel:'背景地図',mapStandard:'JP: 国土地理院 / 標準地図',mapAerial:'JP: 国土地理院 / 航空写真',mapUsgs:'US: USGS / 航空写真',lakeContours:'湖沼図（湖の等深線）を重ねる',lakeContoursTip:'このチェックボックスを入れると、湖沼図の等深線が作成する地図に含まれます。魚探上で湖沼図の等深線だけを個別に表示・非表示にはできません。海や未調査の湖沼の等深線は含まれません。',zoomLabel:'出力ズームレベル',zoomTip:'ZLを1段上げると、地図の細かさ（地上解像度）は約2倍になります。同じ範囲で必要なタイル数・画像データ量は約4倍が目安です。完成容量は写真の内容や圧縮率で変わります。ブラウザーの表示倍率は変わりません。',mapAvailability:'湖沼図は国土地理院が公開する調査済み湖沼の範囲で利用できます。航空写真・湖沼図の取得範囲は地図上で確認してください。',bboxLabel:'範囲（南, 西, 北, 東）',bboxTip:'南, 西, 北, 東の順に入力し、Enterで地図上の選択範囲へ反映します。',mapNameLabel:'Ti2で選ぶ地図名／AT5先頭文字（任意）',outputLabel:'出力先フォルダー',outputTip:'SDカードに保存する場合は、カード直下の ShadedRelief フォルダーを指定してください。PCに保存する場合は任意のフォルダーを指定できます。',browse:'参照…',imcSettings:'IMC設定',checking:'確認中…',imcDialogTitle:'IMCの場所を設定',imcHelp:'「参照…」からInsightMapCreator.exeを選ぶか、エクスプローラーでコピーしたパスを貼り付けてください。Raster Mode設定はmapcreator.zip内のSample ZIPから自動取得します。設定はこのPCに保存され、「IMC設定」からいつでも変更できます。',imcPathLabel:'InsightMapCreator.exeのパス',cancel:'キャンセル',save:'保存',buildNotes:'生成条件：Min 1〜Max 8192 / Filter Alpha 0。容量1,000 MB・タイル数1,000枚は目安です。超えても警告のみで作成を続けます。名前を入力すると、AT5ファイル名の先頭とTi2のChart sourceに使われます。',legalSummary:'出典・安全上の注意',legalBody:'生成地図は正式な航海用海図ではありません。利用前に出典・地域ごとの利用条件と、機器上での表示を確認してください。ビルドで使った出典と注意事項はAT5と一緒に保存されます。',commandLabel:'PowerShellコマンド（編集できます）',runPowerShell:'PowerShellで実行',starting:'起動しています…',windowsOnly:'本ツールはWindows専用です。画面表示は日本語・英語を選べます。ビルドスクリプトのターミナル出力は日本語です。',rangeInvalid:'範囲の数値が不正です。南 西 北 東の順に入力してください。',rangeUpdated:'範囲を更新しました。',estimate:(a,z,m,b,w)=>`範囲面積 約${a} km² / ZL${z}のAT5概算 約${m} MiB（${b} MB）。目安は1,000 MB以内。実サイズは地図の内容や圧縮率で変わります。${w?' 米国本土以外を含む範囲です。USGS航空写真は地域によって高解像度タイルがなく、Buildが失敗する場合があります。':''}`,zoomUsgsTip:' USGS航空写真はZL16までです。ZL17のタイルを取得できない地域があるため選択できません。',outsideUsWarning:'米国本土以外を含む範囲です。USGS航空写真は地域によって高解像度タイルがなく、Buildが失敗する場合があります。',imcValid:'IMC設定済み',imcMissing:'IMC設定を確認してください',imcUnset:'IMC未設定',rangeLoaded:'範囲を読み込みました。地図はドラッグで移動できます。',usgsAreaReset:'保存範囲がUSGS地図の表示位置と合わないため、米国内の初期範囲へ移動しました。',usgsCoordinateMismatch:'選択範囲の座標が米国の範囲外です。USGS地図の表示位置を確認してください。',defaultRange:'既定の範囲を表示しています。',bboxError:'先に正しい範囲を指定してください。',outputMissing:'出力先パスを入力してください。',nameError:'AT5名の先頭文字は半角英数字とハイフンで入力してください。',commandError:'PowerShellコマンドを確認してください。',buildRunning:'Buildを実行中です。詳細はPowerShellで確認できます。',buildDone:'Buildが完了しました。PowerShellで結果を確認できます。',buildFailed:'Buildに失敗しました。PowerShellで詳細を確認してください。',buildEnded:'処理が終了しました。ログを確認してください。',imcPathRequired:'InsightMapCreator.exeのパスを入力してください。',imcChecking:'IMCと付属設定を確認しています…',imcSaved:'IMCの場所を保存しました。',rangeBad:'bboxは南・西・北・東の4数値で指定してください。'},
+ en:{title:'AT5 Map Builder for Lowrance Fish Finders',languageLabel:'Language',mapInstructions:'Drag the map to move it. Turn on “Select area” to draw a map area by dragging. Enter coordinates in south, west, north, east order. The last area is restored next time.',selectOff:'Select area: OFF (drag to move map)',selectOn:'Select area: ON (drag to select area)',baseMapLabel:'Base map',mapStandard:'JP: GSI / Standard map',mapAerial:'JP: GSI / Aerial imagery',mapUsgs:'US: USGS / Aerial imagery',lakeContours:'Overlay lake depth contours',lakeContoursTip:'When checked, lake depth contours from GSI lake maps are included in the generated map. They are baked into the map and cannot be toggled independently on the fish finder. Sea contours and unsurveyed lakes are not included.',zoomLabel:'Output zoom level',zoomTip:'Increasing ZL by one doubles ground detail (resolution). For the same area, tile count and image data are roughly four times larger. Final size depends on image content and compression. This does not change the browser zoom.',mapAvailability:'GSI lake maps are available only for surveyed lakes published by GSI. Check the map to see aerial imagery and lake-map coverage.',bboxLabel:'Area (south, west, north, east)',bboxTip:'Enter coordinates in south, west, north, east order. Press Enter to update the selected map area.',mapNameLabel:'Map name on Ti2 / AT5 filename prefix (optional)',outputLabel:'Output folder',outputTip:'For an SD card, select the ShadedRelief folder at the card root. You can choose any folder on your PC.',browse:'Browse...',imcSettings:'IMC settings',checking:'Checking...',imcDialogTitle:'Set IMC location',imcHelp:'Select InsightMapCreator.exe with Browse... or paste its path from File Explorer. Raster Mode settings are found automatically in the Sample ZIP inside mapcreator.zip. The setting is saved on this PC and can be changed here at any time.',imcPathLabel:'InsightMapCreator.exe path',cancel:'Cancel',save:'Save',buildNotes:'Build settings: Min 1 to Max 8192 / Filter Alpha 0. The 1,000 MB and 1,000 tile figures are guidelines; exceeding them shows a warning but does not stop the build. The name is used as the AT5 filename prefix and Ti2 Chart source.',legalSummary:'Sources and safety',legalBody:'Generated maps are not official navigational charts. Check source credits, local terms, and the map display on your device before use. A source and safety notice is saved alongside the AT5 files.',commandLabel:'PowerShell command (editable)',runPowerShell:'Run in PowerShell',starting:'Starting...',windowsOnly:'This tool runs on Windows only. The UI is available in Japanese and English. Build script output in the terminal remains Japanese.',rangeInvalid:'Invalid area coordinates. Enter south, west, north, east.',rangeUpdated:'Area updated.',estimate:(a,z,m,b,w)=>`Area: about ${a} km² / Estimated AT5 size at ZL${z}: about ${m} MiB (${b} MB). Aim for 1,000 MB or less. Actual size varies with map content and compression.${w?' This area includes locations outside the contiguous United States. High-resolution USGS imagery may be unavailable and the build may fail.':''}`,zoomUsgsTip:' USGS imagery supports up to ZL16. ZL17 is unavailable because tiles may not exist in some areas.',outsideUsWarning:'This area includes locations outside the contiguous United States. High-resolution USGS imagery may be unavailable and the build may fail.',imcValid:'IMC configured',imcMissing:'Check IMC settings',imcUnset:'IMC not configured',rangeLoaded:'Area loaded. Drag the map to move it.',usgsAreaReset:'The saved area did not match the USGS map view. Moved to the default U.S. area.',usgsCoordinateMismatch:'The selected coordinates are outside the U.S. area. Check the USGS map position.',defaultRange:'Showing the default area.',bboxError:'Enter a valid area first.',outputMissing:'Enter an output folder.',nameError:'Use ASCII letters, numbers, and hyphens for the AT5 name prefix.',commandError:'Check the PowerShell command.',buildRunning:'Build is running. See PowerShell for details.',buildDone:'Build completed. Check the result in PowerShell.',buildFailed:'Build failed. See PowerShell for details.',buildEnded:'Process ended. Check the log.',imcPathRequired:'Enter the path to InsightMapCreator.exe.',imcChecking:'Checking IMC and its settings...',imcSaved:'IMC location saved.',rangeBad:'Enter four numeric coordinates in south, west, north, east order.'}
 };
 Object.assign(messages.ja,{folderPickerError:'フォルダー選択画面を開けません',filePickerError:'ファイル選択画面を開けません',outputSaved:'出力先フォルダーを設定しました。',imcSetError:'IMCを設定できません',powershellError:'PowerShellを起動できません',mapNamePlaceholder:'例: Map01',outputPlaceholder:'例: F:\\ShadedRelief',imcPathPlaceholder:'例: C:\\Users\\Name\\Documents\\AT5MapBuilder\\IMC\\InsightMapCreator.exe'});
 Object.assign(messages.en,{folderPickerError:'Could not open the folder picker.',filePickerError:'Could not open the file picker.',outputSaved:'Output folder set.',imcSetError:'Could not configure IMC.',powershellError:'Could not start PowerShell.',mapNamePlaceholder:'Example: Map01',outputPlaceholder:'Example: F:\\ShadedRelief',imcPathPlaceholder:'Example: C:\\Users\\Name\\Documents\\AT5MapBuilder\\IMC\\InsightMapCreator.exe'});
@@ -172,7 +175,8 @@ function applyLanguage(){document.documentElement.lang=language;document.querySe
 const pythonExecutable = __PYTHON_EXECUTABLE_JSON__;
 const toolRoot = __TOOL_ROOT_JSON__;
 const commandBox = document.getElementById('command');
-const map=L.map('map').setView([35.24,139.36],10);
+const map=L.map('map');
+const US_DEFAULT_BBOX=[38.900,-77.150,39.100,-76.850];
 const baseMapBox=document.getElementById('baseMap');
 const lakeContoursBox=document.getElementById('lakeContours');
 const mapZoomBox=document.getElementById('mapZoom');
@@ -187,145 +191,7 @@ function refreshMapLayers(){
  if(selected==='usgs_imagery'&&mapZoomBox.value==='17')mapZoomBox.value='16';
  mapZoomBox.title=t('zoomTip')+(selected==='usgs_imagery'?t('zoomUsgsTip'):'');
  if(selected==='usgs_imagery'){
-  // USGSキャッシュはArcGISの行・列順で指定し、画像のネイティブ詳細はZL16まで表示する。
-  baseTileLayer=L.tileLayer('https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}',{
-   minZoom:0,maxZoom:18,maxNativeZoom:16,
-   attribution:'USDA, USGS The National Map: Orthoimagery'
-  }).addTo(map);
- }else{
-  const standardUrl='https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png';
-  baseTileLayer=L.tileLayer(standardUrl,{minZoom:5,maxZoom:18,
-   attribution:'地理院タイル（標準地図） | 国土地理院'}).addTo(map);
-  if(selected==='aerial'){
-   aerialTileLayer=L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg',{
-    minZoom:14,maxZoom:18,
-    attribution:'地理院タイル（全国最新写真・シームレス） | 国土地理院'
-   }).addTo(map);
-  }
- }
- if(lakeContoursBox.checked){
-  lakeContourLayer=L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/lake1/{z}/{x}/{y}.png',{
-   minZoom:11,maxZoom:17,opacity:0.9,
-   attribution:'地理院タイル（湖沼図） | 国土地理院'
-  }).addTo(map);
- }
- if(lakeContoursBox.checked&&map.getZoom()>17)map.setZoom(17);
-}
-let rect=null, dragStart=null, dragEnd=null, bbox=null, running=false, selectMode=false;
-const box=document.getElementById('bbox'), copyTo=document.getElementById('copyTo'), mapName=document.getElementById('mapName');
-const imcDialog=document.getElementById('imcDialog'), imcPath=document.getElementById('imcPath');
-const imcStatus=document.getElementById('imcStatus'), imcPathError=document.getElementById('imcPathError');
-let imcExePath='', imcTemplatePath='';
-imcPath.addEventListener('paste',e=>{
- const pasted=e.clipboardData?.getData('text/plain');
- if(!pasted)return;
- const trimmed=pasted.trim();
- const clean=trimmed.length>=2&&trimmed.startsWith('"')&&trimmed.endsWith('"')?trimmed.slice(1,-1):pasted;
- if(clean!==pasted){e.preventDefault();const start=imcPath.selectionStart,end=imcPath.selectionEnd;imcPath.setRangeText(clean,start,end,'end');imcPath.dispatchEvent(new Event('input',{bubbles:true}))}
-});
-
-// 緯度経度の順序と大小関係を画面側で先に確認する。
-function valid(a){return a.length===4&&a.every(Number.isFinite)&&a[0]<a[2]&&a[1]<a[3]&&a[0]>=-90&&a[2]<=90&&a[1]>=-180&&a[3]<=180}
-// 座標欄、赤い矩形、概算値、コマンドを同じ範囲に揃える。
-function setBox(a,save=true,fitMap=false){
- if(!valid(a)){status(t('rangeInvalid'));return}
- bbox=a.map(Number); box.value=bbox.map(x=>x.toFixed(6)).join(', ');
- status(t('rangeUpdated'));
- const bounds=[[bbox[0],bbox[1]],[bbox[2],bbox[3]]];
- if(rect)rect.setBounds(bounds);else rect=L.rectangle(bounds,{color:'#d23636',weight:2,fillOpacity:.10}).addTo(map);
- if(fitMap)map.fitBounds(bounds,{padding:[12,12]}); updateCommand(); updateEstimate();
- if(save) persist();
-}
-function parseBox(s){const parts=s.trim().split(/[\s,，]+/).filter(Boolean);if(parts.length!==4)return [];return parts.map(Number)}
-function status(s,force=false){if(running&&!force)return;document.getElementById('status').textContent=s}
-function outputTag(a){return a.map(x=>(x<0?'m':'p')+String(Math.round(Math.abs(x)*1000000)).padStart(9,'0')).join('-')}
-function outputDirectory(a){
- const source=baseMapBox.value+(lakeContoursBox.checked?'-lake':'')+'-z'+mapZoomBox.value;
- return 'map-ui-'+source+'-'+outputTag(a);
-}
-function areaKm2(a){const r=6371,rad=Math.PI/180;return r*r*(a[3]-a[1])*rad*(Math.sin(a[2]*rad)-Math.sin(a[0]*rad))}
-// 試験済み範囲の実測値を基準に、面積比で容量を概算する。
-function updateEstimate(){
- if(!bbox)return;
- const reference=areaKm2([35.140,139.130,35.330,139.590]);
- const zoom=Number(mapZoomBox.value);
- const zoomFactor=4**(zoom-15);
- const mib=Math.round(870*areaKm2(bbox)/reference*zoomFactor), mb=Math.round(mib*1.048576);
- const el=document.getElementById('estimate');
- const outsideUsMainland=baseMapBox.value==='usgs_imagery'&&
-  (bbox[0]<24||bbox[2]>50||bbox[1]<-125||bbox[3]>-66);
- el.className='note '+(outsideUsMainland||mb>1000?'warning':'good');
- el.textContent=t('estimate',Math.round(areaKm2(bbox)),zoom,mib,mb,outsideUsMainland);
-}
-// 現在の入力値からPowerShellコマンド欄を再生成する。
-function updateCommand(){
- const a=parseBox(box.value),dest=copyTo.value.trim(),name=mapName.value.trim();
- if(!valid(a)||!dest||!imcExePath||!imcTemplatePath){commandBox.value='';return}
- const q=v=>"'"+String(v).replace(/'/g,"''")+"'";
- const args=[pythonExecutable,toolRoot.replace(/\\/g,'/')+'/build_at5_map.py',
-  '--bbox',...a.map(v=>String(Number(v).toFixed(6))),
-  '--imc-exe',imcExePath,'--template-sap',imcTemplatePath,
-  '--base-map',baseMapBox.value,'--zoom',mapZoomBox.value,
-  '--output-dir',outputDirectory(a),
-  '--min-resolution','1','--max-resolution','8192','--filter-alpha','0','--copy-to',dest];
- if(lakeContoursBox.checked)args.push('--lake-contours');
- if(name)args.push('--at5-prefix',name);
- commandBox.value="Set-Location -LiteralPath "+q(toolRoot)+"; & "+args.map(q).join(' ')+
-  "; if ($LASTEXITCODE -ne 0) { Write-Host ('Build failed: ' + $LASTEXITCODE) -ForegroundColor Red }";
-}
-async function persist(){
- try{await fetch('/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bbox,copyTo:copyTo.value.trim(),at5Prefix:mapName.value.trim(),imcExe:imcExePath,templateSap:imcTemplatePath,baseMap:baseMapBox.value,zoom:Number(mapZoomBox.value),lakeContours:lakeContoursBox.checked,language})})}catch(e){}
-}
-languageBox.onchange=async()=>{language=languageBox.value==='ja'?'ja':'en';applyLanguage();status(t('rangeUpdated'));await persist()};
-// Enter確定時に入力範囲を地図へ反映する。Shift+Enterは改行。
-box.addEventListener('keydown',e=>{
- if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();setBox(parseBox(box.value),true,true)}
-});
-copyTo.onchange=()=>{updateCommand();persist()};
-document.getElementById('browseOutput').onclick=async()=>{
- try{
-  const r=await fetch('/select-output-dir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initialDir:copyTo.value.trim()})});
-  const j=await r.json();if(!r.ok)throw Error(j.error||t('folderPickerError'));
-  if(j.path){copyTo.value=j.path;updateCommand();await persist();status(t('outputSaved'))}
- }catch(e){status(String(e))}
-};
-mapName.oninput=()=>{updateCommand();persist()};
-baseMapBox.onchange=()=>{refreshMapLayers();updateCommand();updateEstimate();persist()};
-lakeContoursBox.onchange=()=>{refreshMapLayers();updateCommand();persist()};
-mapZoomBox.onchange=()=>{refreshMapLayers();updateCommand();updateEstimate();persist()};
-refreshMapLayers();
-document.getElementById('imcSettings').onclick=()=>{imcPath.value=imcExePath;imcPathError.textContent='';imcDialog.showModal()};
-document.getElementById('browseImc').onclick=async()=>{
- try{
-  const r=await fetch('/select-imc-exe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initialPath:imcPath.value.trim()||imcExePath})});
-  const j=await r.json();if(!r.ok)throw Error(j.error||t('filePickerError'));
-  if(j.path){imcPath.value=j.path;imcPathError.textContent='';}
- }catch(e){imcPathError.textContent=String(e)}
-};
-document.getElementById('cancelImc').onclick=()=>imcDialog.close();
-document.getElementById('saveImc').onclick=async()=>{
- const path=imcPath.value.trim();
- if(!path){imcPathError.textContent=t('imcPathRequired');return}
- const button=document.getElementById('saveImc');button.disabled=true;imcPathError.textContent=t('imcChecking');
- try{
-  const r=await fetch('/imc-settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({imcExe:path})});
-  const j=await r.json();if(!r.ok)throw Error(j.error||t('imcSetError'));
-  imcExePath=j.imcExe;imcTemplatePath=j.templateSap||'';imcStatus.textContent=t('imcValid');imcDialog.close();await persist();updateCommand();status(t('imcSaved'));
- }catch(e){imcPathError.textContent=String(e)}
- finally{button.disabled=false}
-};
-document.getElementById('selectMode').onclick=e=>{selectMode=!selectMode;e.currentTarget.textContent=t(selectMode?'selectOn':'selectOff');e.currentTarget.classList.toggle('primary',selectMode);map.dragging[selectMode?'disable':'enable']()};
-// 範囲選択中だけ、地図ドラッグを矩形指定として扱う。
-map.on('mousedown',e=>{if(!selectMode||e.originalEvent.button!==0)return;dragStart=e.latlng;dragEnd=e.latlng;if(rect)map.removeLayer(rect);rect=L.rectangle([dragStart,dragStart],{color:'#d23636',weight:2,fillOpacity:.10}).addTo(map)});
-map.on('mousemove',e=>{if(dragStart&&rect){dragEnd=e.latlng;rect.setBounds(L.latLngBounds(dragStart,dragEnd))}});
-function finishRange(end){
- if(!dragStart)return;
- const start=dragStart;dragStart=null;dragEnd=null;
- const bounds=L.latLngBounds(start,end),sw=bounds.getSouthWest(),ne=bounds.getNorthEast();
- if(sw.lat===ne.lat||sw.lng===ne.lng)return;
- setBox([sw.lat,sw.lng,ne.lat,ne.lng]);
-}
-// 範囲選択はLeafletが変換した座標を使い、画面表示と入力座標のずれを防ぐ。
+  // USGSキャッシュはArcGISの行・列順で指定し…2396 tokens truncated…した座標を使い、画面表示と入力座標のずれを防ぐ。
 map.on('mouseup',e=>finishRange(e.latlng));
 // 地図の外でマウスを離した場合は、地図内で最後に取得した地点を範囲の終点にする。
 document.addEventListener('mouseup',()=>{if(dragStart)finishRange(dragEnd||dragStart)});
@@ -334,6 +200,7 @@ document.getElementById('runPowerShell').onclick=async()=>{
  if(running)return;
  const a=parseBox(box.value),dest=copyTo.value.trim(),name=mapName.value.trim(),imc=imcExePath,command=commandBox.value.trim();
  if(!valid(a)){status(t('bboxError'));return}
+ if(baseMapBox.value==='usgs_imagery'&&!isPlausibleUsgsArea(a)){status(t('usgsCoordinateMismatch'),true);return}
  if(!dest){status(t('outputMissing'));return}
  if(!imc){imcDialog.showModal();return}
  if(name&&!/^[A-Za-z0-9-]{1,32}$/.test(name)){status(t('nameError'));return}
@@ -345,7 +212,7 @@ async function poll(){
  if(j.running){setTimeout(poll,1200)}else{running=false;document.getElementById('runPowerShell').disabled=false;status(j.resultKey?t(j.resultKey):t('buildEnded'))}
  }catch(e){setTimeout(poll,2000)}
 }
-(async()=>{try{const s=await (await fetch('/state')).json();language=s.language==='ja'||s.language==='en'?s.language:__DEFAULT_LANGUAGE_JSON__;applyLanguage();copyTo.value=s.copyTo||copyTo.value;mapName.value=s.at5Prefix||'';baseMapBox.value=s.baseMap||'standard';mapZoomBox.value=String(s.zoom||15);lakeContoursBox.checked=Boolean(s.lakeContours);refreshMapLayers();imcExePath=s.imcExe||'';imcTemplatePath=s.templateSap||'';imcStatus.textContent=s.imcValid?t('imcValid'):t('imcMissing');setBox(s.bbox||[35.140,139.130,35.330,139.590],false,true);status(t('rangeLoaded'));if(!s.imcValid)imcDialog.showModal()}catch(e){language=__DEFAULT_LANGUAGE_JSON__;applyLanguage();setBox([35.140,139.130,35.330,139.590],false,true);imcStatus.textContent=t('imcUnset');imcDialog.showModal();status(t('defaultRange'))}})();
+(async()=>{try{const s=await (await fetch('/state')).json();language=s.language==='ja'||s.language==='en'?s.language:__DEFAULT_LANGUAGE_JSON__;copyTo.value=s.copyTo||copyTo.value;mapName.value=s.at5Prefix||'';baseMapBox.value=s.baseMap||'standard';mapZoomBox.value=String(s.zoom||15);lakeContoursBox.checked=Boolean(s.lakeContours);imcExePath=s.imcExe||'';imcTemplatePath=s.templateSap||'';imcStatus.textContent=s.imcValid?t('imcValid'):t('imcMissing');let initialBox=s.bbox||[35.140,139.130,35.330,139.590];const resetUsgsArea=baseMapBox.value==='usgs_imagery'&&!isPlausibleUsgsArea(initialBox);if(resetUsgsArea)initialBox=US_DEFAULT_BBOX;map.setView([(initialBox[0]+initialBox[2])/2,(initialBox[1]+initialBox[3])/2],10);applyLanguage();setBox(initialBox,resetUsgsArea,true);status(resetUsgsArea?t('usgsAreaReset'):t('rangeLoaded'));if(!s.imcValid)imcDialog.showModal()}catch(e){language=__DEFAULT_LANGUAGE_JSON__;map.setView([35.24,139.36],10);applyLanguage();setBox([35.140,139.130,35.330,139.590],false,true);imcStatus.textContent=t('imcUnset');imcDialog.showModal();status(t('defaultRange'))}})();
 async function restoreBuildStatus(){
  try{
   const j=await (await fetch('/log')).json();
@@ -451,6 +318,8 @@ class AppState:
                 raise ValueError("背景地図またはズームレベルの指定が不正です")
             if base_map == "usgs_imagery" and zoom > 16:
                 raise ValueError("USGS航空写真の出力ズームレベルはZL15またはZL16です")
+            if base_map == "usgs_imagery" and not plausible_usgs_area(bbox):
+                raise ValueError("USGS航空写真の範囲と座標が一致しません。地図上の選択範囲を確認してください")
             saved = self.read_saved()
             imc_exe = Path(str(data.get("imcExe") or saved.get("imcExe", "")).strip()).expanduser()
             template_sap = Path(str(saved.get("templateSap", "")).strip()) if saved.get("templateSap") else None
@@ -539,6 +408,8 @@ class AppState:
         base_map = str(data.get("baseMap", DEFAULT_BASE_MAP))
         zoom = int(data.get("zoom", DEFAULT_ZOOM))
         lake_contours = bool(data.get("lakeContours", DEFAULT_LAKE_CONTOURS))
+        if base_map == "usgs_imagery" and not plausible_usgs_area(bbox):
+            raise ValueError("USGS航空写真の範囲と座標が一致しません。地図上の選択範囲を確認してください")
         self.save({"bbox": bbox, "copyTo": copy_to, "at5Prefix": at5_prefix,
                    "imcExe": str(imc_exe), "templateSap": str(template_sap),
                    "baseMap": base_map, "zoom": zoom, "lakeContours": lake_contours,
@@ -631,6 +502,12 @@ def validate_bbox(value):
     if not (-90 <= south < north <= 90 and -180 <= west < east <= 180):
         raise ValueError("bboxの範囲または南西北東の順を確認してください")
     return bbox
+
+
+# 米国のUSGS画像取得と明らかに離れた座標をBuild前に検出する。
+def plausible_usgs_area(bbox):
+    south, west, north, east = bbox
+    return south >= 18 and north <= 72 and west >= -180 and east <= -60
 
 # Windowsのフォルダー選択画面でAT5の保存先を選ぶ。
 def select_output_directory(data):
