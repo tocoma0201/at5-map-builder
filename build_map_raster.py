@@ -20,11 +20,11 @@ DEFAULT_CHUNK_TILES = 8
 USGS_COORDINATE_BOUNDS = (18.0, -180.0, 72.0, -60.0)
 
 # タイル範囲をIMCの最大画像サイズに合わせて分割する。
-def make_chunks(bbox, zoom, chunk_tiles):
+def make_chunks(bbox, zoom, chunk_tiles, source="standard"):
     """地図のXYZタイル範囲を重複・隙間なく分割する（外縁はタイル端）。"""
     if not 1 <= chunk_tiles <= 8:
         raise ValueError("--chunk-tiles は1〜8で指定してください（画像1辺最大2048px）")
-    coverage = make_plan(bbox, zoom)
+    coverage = make_plan(bbox, zoom, source=source)
     x1, y1 = coverage["tile_start"]
     x2, y2 = coverage["tile_end"]
     chunks = []
@@ -135,7 +135,7 @@ def plan_data(bbox, zoom, chunk_tiles, base_map="standard", lake_contours=False)
     if lake_contours and not 11 <= zoom <= 17:
         raise ValueError("湖沼図（等深線）のズームレベルは11～17です")
 
-    coverage, chunks = make_chunks(bbox, zoom, chunk_tiles)
+    coverage, chunks = make_chunks(bbox, zoom, chunk_tiles, source=base_map)
     base_source = TILE_SOURCES[base_map]
     overlay_source = TILE_SOURCES["lake_contours"] if lake_contours else None
     return {
@@ -311,9 +311,8 @@ def main(argv=None):
     print(f"範囲: {bbox} / ZL{zoom}" + (f"（元範囲から各辺{args.margin_nm:g}海里拡張）" if args.margin_nm else ""))
     print(f"取得タイル: {plan['tile_count']} 枚 / PNG: {plan['chunk_count']} 枚")
     print(f"保存先: {out.resolve()}")
-    print("出典: 国土地理院（地理院タイル："
-          + ("全国最新写真（シームレス）" if plan["base_map"] == "aerial" else "標準地図")
-          + ("、湖沼図" if plan["lake_contours"] else "") + "）")
+    print(f"出典: {plan['attribution']}"
+          + (f" + {plan['overlay_attribution']}" if plan["lake_contours"] else ""))
     for chunk in plan["chunks"]:
         print(f"  {chunk['png']}: {chunk['pixels'][0]}x{chunk['pixels'][1]} px ({chunk['tiles']}タイル)")
     if args.max_tiles < 1:

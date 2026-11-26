@@ -65,12 +65,14 @@ def inverse_world_pixel(x, y, zoom):
 
 
 # bboxとズームから必要なXYZタイルと画像切り出し範囲を計算する。
-def make_plan(bbox, zoom):
+def make_plan(bbox, zoom, source="standard"):
     south, west, north, east = bbox
     if not (-85 < south < north < 85 and -180 < west < east < 180):
         raise ValueError("bboxには SOUTH WEST NORTH EAST の順で正しい座標を指定してください")
     if not 10 <= zoom <= 18:
         raise ValueError("この試験版はズーム10～18に限定しています")
+    if source not in TILE_SOURCES:
+        raise ValueError(f"未対応の地図タイルです: {source}")
     left, bottom = world_pixel(west, south, zoom)
     right, top = world_pixel(east, north, zoom)
     x1, y1 = math.floor(left / 256), math.floor(top / 256)
@@ -86,8 +88,8 @@ def make_plan(bbox, zoom):
         "pixels": [crop_right - crop_left, crop_bottom - crop_top],
         "crop_global": [crop_left, crop_top, crop_right, crop_bottom],
         "kml_bounds": {"west": west2, "east": east2, "north": north2, "south": south2},
-        "tile_source": "国土地理院 標準地図",
-        "attribution": "国土地理院（地理院タイル）",
+        "tile_source": TILE_SOURCES[source]["name"],
+        "attribution": TILE_SOURCES[source]["attribution"],
     }
 
 
