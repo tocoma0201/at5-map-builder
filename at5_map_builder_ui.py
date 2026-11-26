@@ -100,6 +100,9 @@ textarea{height:62px;resize:vertical} button{cursor:pointer;background:#eef4f7} 
 .good{background:#e8f6ec;color:#175b2b}
 .warning{background:#fff0d9;color:#754500}
 .note{font-size:13px;color:#52606b;line-height:1.45}
+.coordinate-readout{margin:6px 0 2px;padding:7px 9px;background:#f4f6f8;border-radius:5px}
+.coordinate-readout strong{color:#263746}.coordinate-readout details{margin-top:4px}
+.coordinate-readout summary{cursor:pointer}.coordinate-corners{margin:4px 0 0;padding-left:20px}
 dialog{border:1px solid #aab6bf;border-radius:8px;width:min(480px,calc(100vw - 32px));padding:18px;box-shadow:0 12px 32px #0003}dialog::backdrop{background:#0006}dialog h2{margin:0 0 8px;font-size:19px}dialog .actions{margin-top:12px}
 #status{white-space:pre-wrap;background:#f4f6f8;padding:9px;min-height:42px;margin-top:10px}
 @media(max-width:800px){main{display:flex;flex-direction:column}aside{border:0}#map{height:55vh;min-height:380px}}
@@ -129,6 +132,15 @@ dialog{border:1px solid #aab6bf;border-radius:8px;width:min(480px,calc(100vw - 3
 </div>
 <label for="bbox" data-i18n="bboxLabel">範囲（南, 西, 北, 東）</label>
 <textarea id="bbox" spellcheck="false" placeholder="35.140, 139.130, 35.330, 139.590" data-i18n-title="bboxTip" title="南, 西, 北, 東の順に入力し、Enterで地図上の選択範囲へ反映します。"></textarea>
+<div id="coordinateReadout" class="coordinate-readout note" aria-live="polite">
+<div><strong data-i18n="centerCoordinateLabel">魚探で確認する中心座標</strong>: <span id="centerCoordinate"></span></div>
+<details><summary data-i18n="cornerCoordinatesLabel">四隅の座標を表示</summary><ul class="coordinate-corners">
+<li><span data-i18n="southwestLabel">南西</span>: <span id="southwestCoordinate"></span></li>
+<li><span data-i18n="southeastLabel">南東</span>: <span id="southeastCoordinate"></span></li>
+<li><span data-i18n="northwestLabel">北西</span>: <span id="northwestCoordinate"></span></li>
+<li><span data-i18n="northeastLabel">北東</span>: <span id="northeastCoordinate"></span></li>
+</ul></details>
+</div>
 <div id="estimate" class="note"></div>
 <label for="mapName" data-i18n="mapNameLabel">Ti2で選ぶ地図名／AT5先頭文字（任意）</label>
 <input id="mapName" placeholder="例: Map01" data-i18n-placeholder="mapNamePlaceholder" maxlength="32">
@@ -165,10 +177,12 @@ const messages={
 };
 Object.assign(messages.ja,{folderPickerError:'フォルダー選択画面を開けません',filePickerError:'ファイル選択画面を開けません',outputSaved:'出力先フォルダーを設定しました。',imcSetError:'IMCを設定できません',powershellError:'PowerShellを起動できません',mapNamePlaceholder:'例: Map01',outputPlaceholder:'例: F:\\ShadedRelief',imcPathPlaceholder:'例: C:\\Users\\Name\\Documents\\AT5MapBuilder\\IMC\\InsightMapCreator.exe'});
 Object.assign(messages.en,{folderPickerError:'Could not open the folder picker.',filePickerError:'Could not open the file picker.',outputSaved:'Output folder set.',imcSetError:'Could not configure IMC.',powershellError:'Could not start PowerShell.',mapNamePlaceholder:'Example: Map01',outputPlaceholder:'Example: F:\\ShadedRelief',imcPathPlaceholder:'Example: C:\\Users\\Name\\Documents\\AT5MapBuilder\\IMC\\InsightMapCreator.exe'});
+Object.assign(messages.ja,{centerCoordinateLabel:'魚探で確認する中心座標',cornerCoordinatesLabel:'四隅の座標を表示',southwestLabel:'南西',southeastLabel:'南東',northwestLabel:'北西',northeastLabel:'北東'});
+Object.assign(messages.en,{centerCoordinateLabel:'Center coordinates to check on the fish finder',cornerCoordinatesLabel:'Show corner coordinates',southwestLabel:'Southwest',southeastLabel:'Southeast',northwestLabel:'Northwest',northeastLabel:'Northeast'});
 let language=__DEFAULT_LANGUAGE_JSON__;
 const languageBox=document.getElementById('language');
 function t(key,...args){const value=messages[language]?.[key]??messages.en[key]??key;return typeof value==='function'?value(...args):value}
-function applyLanguage(){document.documentElement.lang=language;document.querySelectorAll('[data-i18n]').forEach(el=>el.textContent=t(el.dataset.i18n));document.querySelectorAll('[data-i18n-title]').forEach(el=>el.title=t(el.dataset.i18nTitle));document.querySelectorAll('[data-i18n-placeholder]').forEach(el=>el.placeholder=t(el.dataset.i18nPlaceholder));languageBox.value=language;refreshMapLayers();updateEstimate();}
+function applyLanguage(){document.documentElement.lang=language;document.querySelectorAll('[data-i18n]').forEach(el=>el.textContent=t(el.dataset.i18n));document.querySelectorAll('[data-i18n-title]').forEach(el=>el.title=t(el.dataset.i18nTitle));document.querySelectorAll('[data-i18n-placeholder]').forEach(el=>el.placeholder=t(el.dataset.i18nPlaceholder));languageBox.value=language;refreshMapLayers();updateCoordinateReadout();updateEstimate();}
 const pythonExecutable = __PYTHON_EXECUTABLE_JSON__;
 const toolRoot = __TOOL_ROOT_JSON__;
 const commandBox = document.getElementById('command');
@@ -228,6 +242,22 @@ imcPath.addEventListener('paste',e=>{
 
 // 緯度経度の順序と大小関係を画面側で先に確認する。
 function valid(a){return a.length===4&&a.every(Number.isFinite)&&a[0]<a[2]&&a[1]<a[3]&&a[0]>=-90&&a[2]<=90&&a[1]>=-180&&a[3]<=180}
+// 魚探で入力しやすい度・分表記（分は小数点以下3桁）に変換する。
+function fishfinderCoordinate(value,positive,negative,degreeWidth){
+ const hemisphere=value<0?negative:positive,absolute=Math.abs(value);
+ let degrees=Math.floor(absolute),minutes=Number(((absolute-degrees)*60).toFixed(3));
+ if(minutes>=60){degrees+=1;minutes=0}
+ return `${hemisphere} ${String(degrees).padStart(degreeWidth,'0')}°${minutes.toFixed(3)}′`;
+}
+function updateCoordinateReadout(){
+ if(!bbox)return;
+ const point=(lat,lon)=>`${fishfinderCoordinate(lat,'N','S',2)} / ${fishfinderCoordinate(lon,'E','W',3)}`;
+ document.getElementById('centerCoordinate').textContent=point((bbox[0]+bbox[2])/2,(bbox[1]+bbox[3])/2);
+ document.getElementById('southwestCoordinate').textContent=point(bbox[0],bbox[1]);
+ document.getElementById('southeastCoordinate').textContent=point(bbox[0],bbox[3]);
+ document.getElementById('northwestCoordinate').textContent=point(bbox[2],bbox[1]);
+ document.getElementById('northeastCoordinate').textContent=point(bbox[2],bbox[3]);
+}
 // 座標欄、赤い矩形、概算値、コマンドを同じ範囲に揃える。
 function setBox(a,save=true,fitMap=false){
  if(!valid(a)){status(t('rangeInvalid'));return}
@@ -235,7 +265,7 @@ function setBox(a,save=true,fitMap=false){
  status(t('rangeUpdated'));
  const bounds=[[bbox[0],bbox[1]],[bbox[2],bbox[3]]];
  if(rect)rect.setBounds(bounds);else rect=L.rectangle(bounds,{color:'#d23636',weight:2,fillOpacity:.10}).addTo(map);
- if(fitMap)map.fitBounds(bounds,{padding:[12,12]}); updateCommand(); updateEstimate();
+ if(fitMap)map.fitBounds(bounds,{padding:[12,12]}); updateCoordinateReadout(); updateCommand(); updateEstimate();
  if(save) persist();
 }
 function parseBox(s){const parts=s.trim().split(/[\s,，]+/).filter(Boolean);if(parts.length!==4)return [];return parts.map(Number)}
